@@ -8,18 +8,18 @@
 
 // Donor cell reconstruction.
 
-void reconstr_const(real **WL, real **WR, real ***W,
+void reconstr_const(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc, int ax,
                      ints i1, ints i2, ints j, ints k,
                      int char_proj, real gam) {
 
   ints ip = (ax==0) ? 1 : 0;
 
-  for (ints n=0; n<NWAVES; ++n)
+  for (ints n=0; n<NMODES; ++n)
 #pragma omp simd simdlen(SIMD_WIDTH)
     for (ints i=i1; i<=i2; ++i) {
-      WR[n][i]    = W[0][n][i];
-      WL[n][i+ip] = W[0][n][i];
+      wr[n][i]    = w[0][n][i];
+      wl[n][i+ip] = w[0][n][i];
     }
 
 }
@@ -29,15 +29,15 @@ void reconstr_const(real **WL, real **WR, real ***W,
 
 // Linear reconstruction.
 
-void reconstr_linear(real **WL, real **WR, real ***W,
+void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc, int ax,
                      ints i1, ints i2, ints j, ints k,
                      int char_proj, real gam) {
 
-  real **dm = gc.scratch[ax][0];
-  real **dp = gc.scratch[ax][1];
-  real **d  = gc.scratch[ax][0];
-  real **Wc = gc.scratch[ax][2];
+  real **dm = scr[0];
+  real **dp = scr[1];
+  real **d  = scr[0];
+  real **wc = scr[2];
 
   real *xif  = gc.lf[ax];
   real *xiv  = gc.lv[ax];
@@ -54,53 +54,52 @@ void reconstr_linear(real **WL, real **WR, real ***W,
   if (ax==1) jk=j;
   else if (ax==2) jk=k;
 
-  for (ints n=0; n<NWAVES; n++) {
+  for (ints n=0; n<NMODES; n++) {
 #pragma omp simd
     for (ints i=i1; i<=i2; i++) {
-      Wc[n][i] = W[1][n][i];
-      dm[n][i] = W[1][n][i] - W[0][n][i];
-      dp[n][i] = W[2][n][i] - W[1][n][i];
+      wc[n][i] = w[1][n][i];
+      dm[n][i] = w[1][n][i] - w[0][n][i];
+      dp[n][i] = w[2][n][i] - w[1][n][i];
     }
   }
 
   if (char_proj) {
-    prim2char_1(dm, Wc, i1,i2, gam);
-    prim2char_1(dp, Wc, i1,i2, gam);
+    prim2char_1(dm, wc, i1,i2, gam);
+    prim2char_1(dp, wc, i1,i2, gam);
   }
 
-  //-------------------------------------
-  // uniform coordinate
+  // any flat uniform coordinate
 
   if (is_flat_uni) {
 
-    for (ints n=0; n<NWAVES; n++)
+    for (ints n=0; n<NMODES; n++)
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (ints i=i1; i<=i2; i++)
-        d[n][i] = 0.5*VLlim(dm[n][i], dp[n][i]);
+        d[n][i] = 0.5*vl_lim(dm[n][i], dp[n][i]);
 
     if (char_proj)
-      char2prim_1(d, Wc, i1,i2, gam);
+      char2prim_1(d, wc, i1,i2, gam);
 
-    for (ints n=0; n<NWAVES; n++) {
+    for (ints n=0; n<NMODES; n++) {
 #pragma omp simd
       for (ints i=i1; i<=i2; i++) {
 
-        WR[n][i]    = Wc[n][i] - d[n][i];
-        WL[n][i+ip] = Wc[n][i] + d[n][i];
+        wr[n][i]    = wc[n][i] - d[n][i];
+        wl[n][i+ip] = wc[n][i] + d[n][i];
       }
     }
 
   }
 
-  // ---------------------------------------
-  // non-uniform or curvilinear coordinate
+  // nonuniform or curvilinear coordinate
 
   else {
 
-    // X-coordinate in the direction of vectorization
+    // x-coordinate (in the direction of vectorization)
+
     if (ax==0) {
 
-      for (ints n=0; n<NWAVES; n++) {
+      for (ints n=0; n<NMODES; n++) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; i++) {
 
@@ -129,26 +128,26 @@ void reconstr_linear(real **WL, real **WR, real ***W,
       }
 
       if (char_proj)
-        char2prim_1(d, Wc, i1,i2, gam);
+        char2prim_1(d, wc, i1,i2, gam);
 
-      for (ints n=0; n<NWAVES; n++) {
+      for (ints n=0; n<NMODES; n++) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; i++) {
-          WR[n][i]   = Wc[n][i] - d[n][i] * (xiv[i]   - xif[i]);
-          WL[n][i+1] = Wc[n][i] + d[n][i] * (xif[i+1] - xiv[i]);
+          wr[n][i]   = wc[n][i] - d[n][i] * (xiv[i]   - xif[i]);
+          wl[n][i+1] = wc[n][i] + d[n][i] * (xif[i+1] - xiv[i]);
         }
       }
 
     }
 
-    //-----------------------------------------
-    // Y or Z coordinate
+    // y- or z-coordinate
+
     else {
 
       real fm = dxiv[jk  ] / (xiv[jk]   - xif[jk]);
       real fp = dxiv[jk+1] / (xif[jk+1] - xiv[jk]);
 
-      for (ints n=0; n<NWAVES; n++) {
+      for (ints n=0; n<NMODES; n++) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; i++) {
 
@@ -166,16 +165,16 @@ void reconstr_linear(real **WL, real **WR, real ***W,
       }
 
       if (char_proj)
-        char2prim_1(d, Wc, i1,i2, gam);
+        char2prim_1(d, wc, i1,i2, gam);
 
       real dximh = xiv[jk]   - xif[jk];
       real dxiph = xif[jk+1] - xiv[jk];
 
-      for (ints n=0; n<NWAVES; n++) {
+      for (ints n=0; n<NMODES; n++) {
 #pragma omp simd
         for (ints i=i1; i<=i2; i++) {
-          WR[n][i] = Wc[n][i] - d[n][i] * dximh;
-          WL[n][i] = Wc[n][i] + d[n][i] * dxiph;
+          wr[n][i] = wc[n][i] - d[n][i] * dximh;
+          wl[n][i] = wc[n][i] + d[n][i] * dxiph;
         }
       }
 
@@ -187,11 +186,11 @@ void reconstr_linear(real **WL, real **WR, real ***W,
 
 
 
-// ==========================================================
+// ==============================================================
 
 // WENO reconstruction.
 
-void reconstr_weno(real **WL, real **WR, real ***W,
+void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc, int ax,
                      ints i1, ints i2, ints j, ints k,
                      int char_proj, real gam) {
@@ -206,9 +205,9 @@ void reconstr_weno(real **WL, real **WR, real ***W,
   if (ax==1) jk=j;
   else if (ax==2) jk=k;
 
-  real **dm = gc.scratch[ax][0];
-  real **dp = gc.scratch[ax][1];
-  real **Wc = gc.scratch[ax][2];
+  real **dm = scr[0];
+  real **dp = scr[1];
+  real **wc = scr[2];
 
   real *dxiv     = gc.dlv[ax];
   real *dxiv_inv = gc.dlv_inv[ax];
@@ -221,26 +220,25 @@ void reconstr_weno(real **WL, real **WR, real ***W,
   else Cref = 20. / (gc.lmax[ax]-gc.lmin[ax]);
 
 
-  for (ints n=0; n<NWAVES; ++n) {
+  for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd
     for (ints i=i1; i<=i2; ++i) {
-      Wc[n][i] = W[1][n][i];
-      dm[n][i] = W[1][n][i] - W[0][n][i];
-      dp[n][i] = W[2][n][i] - W[1][n][i];
+      wc[n][i] = w[1][n][i];
+      dm[n][i] = w[1][n][i] - w[0][n][i];
+      dp[n][i] = w[2][n][i] - w[1][n][i];
     }
   }
 
   if (char_proj) {
-    prim2char_1(dm, Wc, i1,i2, gam);
-    prim2char_1(dp, Wc, i1,i2, gam);
+    prim2char_1(dm, wc, i1,i2, gam);
+    prim2char_1(dp, wc, i1,i2, gam);
   }
 
-  //-------------------------------------
-  // Uniform Cartesian or phi cordinate.
+  // uniform flat cordinate.
 
   if (is_flat_uni) {
 
-    for (ints n=0; n<NWAVES; ++n) {
+    for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (ints i=i1; i<=i2; ++i) {
 
@@ -260,28 +258,27 @@ void reconstr_weno(real **WL, real **WR, real ***W,
     }
 
     if (char_proj) {
-      char2prim_1(dm, Wc, i1,i2, gam);
-      char2prim_1(dp, Wc, i1,i2, gam);
+      char2prim_1(dm, wc, i1,i2, gam);
+      char2prim_1(dp, wc, i1,i2, gam);
     }
 
-    for (ints n=0; n<NWAVES; ++n) {
+    for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd
       for (ints i=i1; i<=i2; ++i) {
-        WR[n][i]    = Wc[n][i] - dm[n][i];
-        WL[n][i+ip] = Wc[n][i] + dp[n][i];
+        wr[n][i]    = wc[n][i] - dm[n][i];
+        wl[n][i+ip] = wc[n][i] + dp[n][i];
       }
     }
 
   }
 
-  // ---------------------------------------
-  // Nonuniform or non-Cartesian coordinate.
+  // nonuniform or curvilinear coordinate
 
   else {
 
     if (ax==0) {
 
-      for (ints n=0; n<NWAVES; ++n) {
+      for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
@@ -307,26 +304,25 @@ void reconstr_weno(real **WL, real **WR, real ***W,
       }
 
       if (char_proj) {
-        char2prim_1(dm, Wc, i1,i2, gam);
-        char2prim_1(dp, Wc, i1,i2, gam);
+        char2prim_1(dm, wc, i1,i2, gam);
+        char2prim_1(dp, wc, i1,i2, gam);
       }
 
-      for (ints n=0; n<NWAVES; ++n) {
+      for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd
         for (ints i=i1; i<=i2; ++i) {
-          WR[n][i]   = Wc[n][i] - dm[n][i] * (xiv[i]   - xif[i]);
-          WL[n][i+1] = Wc[n][i] + dp[n][i] * (xif[i+1] - xiv[i]);
+          wr[n][i]   = wc[n][i] - dm[n][i] * (xiv[i]   - xif[i]);
+          wl[n][i+1] = wc[n][i] + dp[n][i] * (xif[i+1] - xiv[i]);
         }
       }
 
     }
 
-    //-----------------------------------------
-    // Y or Z coordinate
+    // y- or z-coordinate
 
     else {
 
-      for (ints n=0; n<NWAVES; ++n) {
+      for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
@@ -352,24 +348,24 @@ void reconstr_weno(real **WL, real **WR, real ***W,
       }
 
       if (char_proj) {
-        char2prim_1(dm, Wc, i1,i2, gam);
-        char2prim_1(dp, Wc, i1,i2, gam);
+        char2prim_1(dm, wc, i1,i2, gam);
+        char2prim_1(dp, wc, i1,i2, gam);
       }
 
       real dximh = xiv[jk]   - xif[jk];
       real dxiph = xif[jk+1] - xiv[jk];
 
-      for (ints n=0; n<NWAVES; ++n) {
+      for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd
         for (ints i=i1; i<=i2; ++i) {
-          WR[n][i] = Wc[n][i] - dm[n][i] * dximh;
-          WL[n][i] = Wc[n][i] + dp[n][i] * dxiph;
+          wr[n][i] = wc[n][i] - dm[n][i] * dximh;
+          wl[n][i] = wc[n][i] + dp[n][i] * dxiph;
         }
       }
 
-    } // end of if x- or -y coordinate
+    } // end of if x or y coordinate
 
-  } // end of if uniform
+  } // end of if is_flat_uni
 
 }
 
@@ -378,7 +374,7 @@ void reconstr_weno(real **WL, real **WR, real ***W,
 
 // Parabolic reconstruction.
 
-void reconstr_parab(real **WL, real **WR, real ***W,
+void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
                      GridCoord *gc, int ax,
                      ints i1, ints i2, ints j, ints k,
                      int char_proj, real gam) {
@@ -410,54 +406,49 @@ void reconstr_parab(real **WL, real **WR, real ***W,
   real *hm_ratio = gc.hm_ratio[ax];
   real *hp_ratio = gc.hp_ratio[ax];
 
-
-  real **Wc  = gc.scratch[ax][0];
-  real **Wc_ = gc.scratch[ax][1];
-  real **Wm2 = gc.scratch[ax][2];
-  real **Wm1 = gc.scratch[ax][3];
-  real **Wp1 = gc.scratch[ax][4];
-  real **Wp2 = gc.scratch[ax][5];
-
+  real **_wc  = scr[0];
+  real **_wc0 = scr[1];
+  real **_wm2 = scr[2];
+  real **_wm1 = scr[3];
+  real **_wp1 = scr[4];
+  real **_wp2 = scr[5];
 
   // reuse some scratch for temporary arrays
-  real **WL_tmp = gc.scratch[ax][2];
-  real **WR_tmp = gc.scratch[ax][3];
+  real **_wl_tmp = scr[2];
+  real **_wr_tmp = scr[3];
 
 
-  for (ints n=0; n<NWAVES; ++n) {
+  for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd
     for (ints i=i1; i<=i2; ++i) {
-      Wm2[n][i] = W[0][n][i];
-      Wm1[n][i] = W[1][n][i];
-      Wc[n][i]  = W[2][n][i];
-      Wc_[n][i] = W[2][n][i];
-      Wp1[n][i] = W[3][n][i];
-      Wp2[n][i] = W[4][n][i];
+      _wm2[n][i] = _w[0][n][i];
+      _wm1[n][i] = _w[1][n][i];
+      _wc[n][i]  = _w[2][n][i];
+      _wc0[n][i] = _w[2][n][i];
+      _wp1[n][i] = _w[3][n][i];
+      _wp2[n][i] = _w[4][n][i];
     }
   }
 
   if (char_proj) {
-    prim2char_1(Wm2, Wc_, i1,i2, gam);
-    prim2char_1(Wm1, Wc_, i1,i2, gam);
-    prim2char_1(Wc,  Wc_, i1,i2, gam);
-    prim2char_1(Wp1, Wc_, i1,i2, gam);
-    prim2char_1(Wp2, Wc_, i1,i2, gam);
+    prim2char_1(_wm2, _wc0, i1,i2, gam);
+    prim2char_1(_wm1, _wc0, i1,i2, gam);
+    prim2char_1(_wc,  _wc0, i1,i2, gam);
+    prim2char_1(_wp1, _wc0, i1,i2, gam);
+    prim2char_1(_wp2, _wc0, i1,i2, gam);
   }
 
-  // ==========================================
-
-  //-------------------------------------
-  // Uniform Cartesian or phi cordinate.
+  // uniform flat coordinate
 
   if (is_flat_uni) {
 
-    for (ints n=0; n<NWAVES; ++n) {
+    for (ints n=0; n<NMODES; ++n) {
 
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (ints i=i1; i<=i2; ++i) {
 
-        wm2 = Wm2[n][i]; wm1 = Wm1[n][i]; wc = Wc[n][i];
-        wp1 = Wp1[n][i]; wp2 = Wp2[n][i];
+        wm2 = _wm2[n][i]; wm1 = _wm1[n][i]; wc = _wc[n][i];
+        wp1 = _wp1[n][i]; wp2 = _wp2[n][i];
 
         // approximate left and right interfaces by parabolic interpolation
 
@@ -530,39 +521,38 @@ void reconstr_parab(real **WL, real **WR, real ***W,
             wph = wc + 2.*dmhc;
         }
 
-        WL_tmp[n][i] = wph;
-        WR_tmp[n][i] = wmh;
+        _wl_tmp[n][i] = wph;
+        _wr_tmp[n][i] = wmh;
 
       }
     } // end of loops over i and n
 
   }
 
-  // ---------------------------------------
-  // Nonuniform or non-Cartesian coordinate.
+  // nonuniform or curvilinear coordinate
 
   else {
 
     if (ax==0) {
 
-      for (ints n=0; n<NWAVES; ++n) {
+      for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
-          real wm2 = Wm2[n][i];
-          real wm1 = Wm1[n][i];
-          real wc  =  Wc[n][i];
-          real wp1 = Wp1[n][i];
-          real wp2 = Wp2[n][i];
+          real wm2 = _wm2[n][i];
+          real wm1 = _wm1[n][i];
+          real wc  =  _wc[n][i];
+          real wp1 = _wp1[n][i];
+          real wp2 = _wp2[n][i];
 
           real hpr = hp_ratio[n][i];
           real hmr = hm_ratio[n][i];
 
-          real wmh = ( cm[0][i] * wm2 + cm[1][i] * wm1
-                     + cm[2][i] * wc  + cm[3][i] * wp1 );
+          real wmh = ( (cm[1][i] * wm1 + cm[2][i] * wc )
+                     + (cm[0][i] * wm2 + cm[3][i] * wp1) );
 
-          real wph = ( cp[0][i] * wm1 + cp[1][i] *  wc
-                     + cp[2][i] * wp1 + cp[3][i] * wp2 );
+          real wph = ( (cp[1][i] * wc  + cp[2][i] * wp1)
+                     + (cp[0][i] * wm1 + cp[3][i] * wp2) );
 
           wmh = MIN(wmh, MAX(wc,wm1));
           wmh = MAX(wmh, MIN(wc,wm1));
@@ -587,8 +577,8 @@ void reconstr_parab(real **WL, real **WR, real ***W,
               wph = wc + hmr*dm;
           }
 
-          WR_tmp[n][i] = wmh;
-          WL_tmp[n][i] = wph;
+          _wr_tmp[n][i] = wmh;
+          _wl_tmp[n][i] = wph;
 
           // dm2 = wm1 - wm2;
           // dm1 = wc  - wm1;
@@ -607,8 +597,8 @@ void reconstr_parab(real **WL, real **WR, real ***W,
 
           // if (dm * dp > 0) {
           //
-          //   WR_tmp[n][i] = Wc[n][i];
-          //   WL_tmp[n][i] = Wc[n][i];
+          //   _wr_tmp[n][i] = _wc[n][i];
+          //   _wl_tmp[n][i] = _wc[n][i];
           //
           // } else {
           //
@@ -617,8 +607,8 @@ void reconstr_parab(real **WL, real **WR, real ***W,
           //   if (dm_abs >= 2*dp_abs) dm = -2*dp;
           //   else if (dp_abs >= 2*dm_abs) dp = -2*dm;
           //
-          //   WR_tmp[n][i] = W[2][n][i] + dm;
-          //   WL_tmp[n][i] = W[2][n][i] + dp;
+          //   _wr_tmp[n][i] = w[2][n][i] + dm;
+          //   _wl_tmp[n][i] = w[2][n][i] + dp;
           // }
 
         }
@@ -626,29 +616,28 @@ void reconstr_parab(real **WL, real **WR, real ***W,
 
     }
 
-    //-----------------------------------------
-    // Y or Z coordinate
+    // y- or z-coordinate
 
     else {
 
-      for (ints n=0; n<NWAVES; ++n) {
+      for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
-          real wm2 = Wm2[n][i];
-          real wm1 = Wm1[n][i];
-          real wc  =  Wc[n][i];
-          real wp1 = Wp1[n][i];
-          real wp2 = Wp2[n][i];
+          real wm2 = _wm2[n][i];
+          real wm1 = _wm1[n][i];
+          real wc  =  _wc[n][i];
+          real wp1 = _wp1[n][i];
+          real wp2 = _wp2[n][i];
 
           real hpr = hp_ratio[n][jk];
           real hmr = hm_ratio[n][jk];
 
-          real wmh = ( cm[0][jk] * wm2 + cm[1][jk] * wm1
-                     + cm[2][jk] * wc  + cm[3][jk] * wp1 );
+          real wmh = ( (cm[1][jk] * wm1 + cm[2][jk] * wc)
+                     + (cm[0][jk] * wm2 + cm[3][jk] * wp1) );
 
-          real wph = ( cp[0][jk] * wm1 + cp[1][jk] *  wc
-                     + cp[2][jk] * wp1 + cp[3][jk] * wp2 );
+          real wph = ( (cp[1][jk] *  wc + cp[2][jk] * wp1)
+                     + (cp[0][jk] * wm1 + cp[3][jk] * wp2) );
 
           wmh = MIN(wmh, MAX(wc,wm1));
           wmh = MAX(wmh, MIN(wc,wm1));
@@ -673,29 +662,27 @@ void reconstr_parab(real **WL, real **WR, real ***W,
               wph = wc + hmr*dm;
           }
 
-          WR_tmp[n][i] = wmh;
-          WL_tmp[n][i] = wph;
+          _wr_tmp[n][i] = wmh;
+          _wl_tmp[n][i] = wph;
 
         }
       } // end of loops over i and n
 
     } // end of if x- or y-coordinate
 
-  } // end of if uniform
+  } // end of is_flat_uni
 
-
-  // =================================================
 
   if (char_proj) {
-    char2prim_1(WL_tmp, Wc_, i1,i2, gam);
-    char2prim_1(WR_tmp, Wc_, i1,i2, gam);
+    char2prim_1(_wl_tmp, _wc0, i1,i2, gam);
+    char2prim_1(_wr_tmp, _wc0, i1,i2, gam);
   }
 
-  for (ints n=0; n<NWAVES; ++n) {
+  for (ints n=0; n<NMODES; ++n) {
 #pragma omp simd
     for (ints i=i1; i<=i2; ++i) {
-      WR[n][i]    = WR_tmp[n][i];
-      WL[n][i+ip] = WL_tmp[n][i];
+      _wr[n][i]    = _wr_tmp[n][i];
+      _wl[n][i+ip] = _wl_tmp[n][i];
     }
   }
 

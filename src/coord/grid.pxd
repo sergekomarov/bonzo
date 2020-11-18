@@ -32,37 +32,42 @@ cdef extern from "coord.h" nogil:
 
     real lmin[3]        # coordinates of left border of global domain
     real lmax[3]        # coordinates of right border of global domain
-    #real l1[3]         # coordinates of left border of local grid
-    #real l2[3]         # coordinates of right border of local grid
 
-    IF not PIC:
+    real **lf           # coordinates of cell faces
+    real **lv           # cell baricenters
 
-      real **lf           # coordinates of cell faces
-      real **lv           # cell baricenters
+    # cell spacings
+    real **dlf          # between cell faces
+    real **dlv          # between cell centers
+    real **dlf_inv
+    real **dlv_inv      # inverse spacings
 
-      real ***dv          # cell volumes
-      real ****da         # cell areas in all directions
-      real ****ds         # lengths of cell edges
+    CoorgGeom coord_geom       # coordinate geometry
+    CoordScale coord_scale[3]  # scale of the coordinate axes
 
-      # cell spacings
-      real **dlf          # between cell faces
-      real **dlv          # between cell centers
-      real **dlf_inv
-      real **dlv_inv      # inverse spacings
+    # auxilary coefficients to calculate cell volumes, areas, and lengths
+    real *rinv_mean
+    real *d2r
+    real *d3r
+    real *sin_thf
+    real *sin_thc
+    real *dcos_thf
 
-      CoorgGeom coord_geom       # coordinate geometry
-      CoordScale coord_scale[3]  # scale of the coordinate axes
+    # auxilary coefficients to calculate geometric source terms
+    real *src_coeff1
+    real **src_coeff2
 
-      # MPI block IDs
-      ints rank             # MPI rank of the grid
-      ints pos[3]           # 3D index of the grid on the current processor
+    # coefficients used in parabolic reconstruction (Mignone paper)
+    real **hp_ratio
+    real **hm_ratio
 
-      # Auxilary coefficients for non-cartesian coordinates.
-      real *rinv_mean
-      real *src_coeff1
-      real **src_coeff2
-      real **hp_ratio
-      real **hm_ratio
+    # interpolation coefficients
+    real **cm
+    real **cp
+
+    # MPI block IDs
+    ints rank             # MPI rank of the grid
+    ints pos[3]           # 3D index of the grid on the current processor
 
     IF MPI:
 
@@ -75,8 +80,6 @@ cdef extern from "coord.h" nogil:
       # nbr_ids[axis,L(0)/R(1)]
 
 
-# ===========================================================================
-
 
 #=====================================================================
 
@@ -84,38 +87,30 @@ cdef extern from "coord.h" nogil:
 
 cdef class GridData:
 
-  IF not PIC:
+  cdef:
 
-    cdef:
+    real4d cons         # cell-centered conserved variables
+    real4d prim         # cell-centered primitive variables
 
-      real4d U            # cell-centered conserved variables
-      real4d W            # cell-centered primitive variables
+    real4d bf           # face-centered magnetic field
+    # real4d ec           # cell-centered electric field
+    # real4d ee           # edge-centered electric field
 
-      real4d Fx, Fy, Fz   # Godunov fluxes
-      real4d Us           # predictor-step arrays of cell-centered conserved variables
-      real4d Uss
+    # real4d flux_x, flux_y, flux_z   # Godunov fluxes
 
-      real3d Phi          # static gravitational potential
-      real4d DrivF        # driving force
-      CosTab costab       # cosine lookup table for the turbulence module
+    # real4d cons_s       # predictor-step arrays of cell-centered conserved variables
+    # real4d cons_ss
+    #
+    # real4d bf_s         # predictor-step arrays of face-centered magnetic field
+    # real4d bf_ss
 
-      real4d B            # face-centered magnetic field
-      real4d Ec, E        # cell-centered and edge-centered electric field
-      real4d Bs           # predictor-step arrays of face-centered magnetic field
-      real4d Bss
-
-      real4d Binit        # initial magnetic field
-
-      real3d nuii_eff     # effective ion collision rate
+    real4d bf_init      # initial magnetic field
+    # real3d phi          # static gravitational potential
+    # real4d fdriv        # driving force
+    # real3d nuii_eff     # effective ion collision rate
 
   IF MHDPIC:
-    cdef real4d CoupF     # particle feedback array
-
-  IF PIC:
-    cdef:
-      real4d E            # edge-centered electric field
-      real4d B            # face-centered magnetic field
-      real4d J            # edge-centered currents
+    cdef real4d fcoup     # particle feedback array
 
 
 
@@ -126,6 +121,8 @@ cdef class GridData:
 cdef class GridScratch:
 
   cdef:
+    # scratch arrays used by reconstruction routines
+    real4d scr_reconstr
 
     # divergence of velocity field
     real3d div
@@ -154,40 +151,14 @@ cdef class GridScratch:
     real3d Fx_diff2, Fy_diff2, Fz_diff2
 
   IF MHDPIC:
-    cdef real4d CoupF_tmp   # temporary copy of the particle feedback array
-  IF PIC:
-    cdef real4d Jtmp        # temporary copy of the particle current array
+    cdef real4d fcoup_tmp   # temporary copy of the particle feedback array
+
 
 
 # =========================================================================
 
 cdef class BnzSim
-
-# grid BC function pointer
-ctypedef void (*BCFuncGrid)(BnzSim, ints[::1])
-
-# Boundary condition class.
-
-cdef class GridBC:
-
-  # BC flags
-  # 0 - periodic; 1 - outflow; 2 - reflective / conductive; 3 - user-defined
-  cdef int bc_flags[3][2]
-
-  # array of grid BC function pointers
-  cdef BCFuncGrid bc_grid_funcs[3][2]
-
-  IF PIC or MHDPIC:
-    # exchange BC for currents / particle feedback
-    cdef BCFuncGrid bc_exch_funcs[3][2]
-
-  IF MPI:
-    cdef:
-      real2d sendbuf, recvbuf    # send/receive buffers for boundary conditions
-      ints recvbuf_size, sendbuf_size   # buffer sizes
-
-
-#====================================================================
+cdef class GridBC
 
 # Grid class, contains parameters and data of local grid.
 
@@ -196,16 +167,16 @@ cdef class BnzGrid:
   cdef:
     GridCoord coord      # grid coordinates
     GridData data        # grid data
-    GridScratch scr      # scratch arrays
+    GridScratch scratch  # scratch arrays
     GridBC bc            # boundary conditions
 
-  IF PIC or MHDPIC:
+  IF MHDPIC:
     cdef BnzParticles prts
 
   cdef bytes usr_dir     # user directory, contains config file
 
   cdef:
-    init_data(self)
-    init_bc_buffer(self)
+    void init(self)
+    void init_data(self)
   IF MPI:
-    cdef domain_decomp(self)
+    cdef void domain_decomp(self)

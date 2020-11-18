@@ -7,25 +7,26 @@
 
 void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
-  real w[NWAVES];
-  real u[NWAVES];
-  real rhoi, ppd, ppd_ppl, v2, b2=0.;
+  real w[NMODES];
+  real u[NMODES];
 
 #pragma omp simd private(u, w)
   for (ints i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NWAVES; ++n)
+    for (ints n=0; n<NMODES; ++n)
       u[n] = U1[n][i];
 
     //-----------------------
 
+    real rhoi = 1./u[RHO];
+
     w[RHO] = u[RHO];
-    rhoi = 1./u[RHO];
     w[VX] = u[MX] * rhoi;
     w[VY] = u[MY] * rhoi;
     w[VZ] = u[MZ] * rhoi;
 
-    v2 = SQR(w[VX]) + SQR(w[VY]) + SQR(w[VZ]);
+    real v2 = SQR(w[VX]) + SQR(w[VY]) + SQR(w[VZ]);
+    real b2 = 0.;
 #if MFIELD
     b2 = SQR(u[BX]) + SQR(u[BY]) + SQR(u[BZ]);
 #endif
@@ -34,11 +35,11 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
 #if TWOTEMP
     w[PE] = POW(u[RHO], gam) * EXP(u[SE] * rhoi);
-    w[PR] = w[PR] - w[PE];
+    w[PR] -= w[PE];
 #endif
 
 #if CGL
-    ppd_ppl = EXP(u[LA] * rhoi) * b2*SQRT(b2) * SQR(rhoi);
+    real ppd_ppl = EXP(u[LA] * rhoi) * b2*SQRT(b2) * SQR(rhoi);
     w[PPD] = 3.*ppd_ppl / (1. + 2.*ppd_ppl) * w[PR];
 #endif
 
@@ -52,7 +53,7 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
     //-----------------------
 
-    for (ints n=0; n<NWAVES; ++n)
+    for (ints n=0; n<NMODES; ++n)
       W1[n][i] = w[n];
 
   }
@@ -64,15 +65,14 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
 void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
-  real w[NWAVES];
-  real u[NWAVES];
-  real ppd_ppl, v2, b2=0.;
-  real gamm1i = 1./(gam-1);
+  real w[NMODES];
+  real u[NMODES];
+  real gamm1i = 1./(gam-1.);
 
 #pragma omp simd private(u, w)
   for (ints i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NWAVES; ++n)
+    for (ints n=0; n<NMODES; ++n)
       w[n] = W1[n][i];
 
     //-----------------------
@@ -82,7 +82,8 @@ void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
     u[MY]  = w[RHO]*w[VY];
     u[MZ]  = w[RHO]*w[VZ];
 
-    v2 = SQR(w[VX]) + SQR(w[VY]) + SQR(w[VZ]);
+    real v2 = SQR(w[VX]) + SQR(w[VY]) + SQR(w[VZ]);
+    real b2 = 0.;
 #if MFIELD
     b2 = SQR(w[BX]) + SQR(w[BY]) + SQR(w[BZ]);
 #endif
@@ -90,11 +91,11 @@ void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
 #if TWOTEMP
     u[SE] = w[RHO] * (LOG(w[PE]) - gam*LOG(w[RHO]));
-    u[EN] = u[EN] + w[PE] * gamm1i;
+    u[EN] += w[PE] * gamm1i;
 #endif
 
 #if CGL
-    ppd_ppl = w[PPD] / (3.*w[PR] - 2.*w[PPD]);
+    real ppd_ppl = w[PPD] / (3.*w[PR] - 2.*w[PPD]);
     u[LA] = u[RHO] * LOG(ppd_ppl * SQR(u[RHO]) / (b2*SQRT(b2)));
 #endif
 
@@ -108,7 +109,7 @@ void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
     //-----------------------
 
-    for (ints n=0; n<NWAVES; ++n)
+    for (ints n=0; n<NMODES; ++n)
       U1[n][i] = u[n];
 
   }
@@ -123,50 +124,44 @@ void prim2char_1(real **vc, real **W1,
 
 #if MFIELD
 
-  real rhoi,rhoisr, s, a2rho,a, arhoisr, bx2, bperp2,bperpi, b2;
-  real x,y,z, cf2rho,cs2rho, cf,cs;
-  real alphaf, alphas, alphaf_,alphas_, qf_,qs_, Af_,As_, betay,betaz, nf;
-
-  real vc_rho, vc_vx, vc_vy, vc_vz, vc_p, vc_by, vc_bz;
-  real w_rho,  w_p,  w_bx,  w_by, w_bz;
-
 #pragma omp simd simdlen(SIMD_WIDTH)
   for (ints i=i1; i<=i2; ++i) {
 
-    vc_rho = vc[RHO][i];
-    vc_vx  = vc[VX][i];
-    vc_vy  = vc[VY][i];
-    vc_vz  = vc[VZ][i];
-    vc_p   = vc[PR][i];
-    vc_by  = vc[BY][i];
-    vc_bz  = vc[BZ][i];
+    real vc_rho = vc[RHO][i];
+    real vc_vx  = vc[VX][i];
+    real vc_vy  = vc[VY][i];
+    real vc_vz  = vc[VZ][i];
+    real vc_p   = vc[PR][i];
+    real vc_by  = vc[BY][i];
+    real vc_bz  = vc[BZ][i];
 
-    w_rho = W1[RHO][i];
-    w_p   = W1[PR][i];
-    w_bx  = W1[BX][i];
-    w_by  = W1[BY][i];
-    w_bz  = W1[BZ][i];
+    real w_rho = W1[RHO][i];
+    real w_p   = W1[PR][i];
+    real w_bx  = W1[BX][i];
+    real w_by  = W1[BY][i];
+    real w_bz  = W1[BZ][i];
 
-    rhoi = 1./w_rho;
+    real rhoi = 1./w_rho;
 
-    s = FSIGN(w_bx);
+    real s = FSIGN(w_bx);
 
-    a2rho = gam * w_p;
-    a = SQRT(a2rho * rhoi);
+    real a2rho = gam * w_p;
+    real a = SQRT(a2rho * rhoi);
 
-    bx2    = SQR(w_bx);
-    bperp2 = SQR(w_by) + SQR(w_bz);
-    b2 = bx2 + bperp2;
+    real bx2    = SQR(w_bx);
+    real bperp2 = SQR(w_by) + SQR(w_bz);
+    real b2 = bx2 + bperp2;
 
-    x = a2rho + b2;
-    y = SQRT(FABS( x * x - 4. * a2rho * bx2 ));
-    cf2rho = 0.5 * (x + y);
-    cs2rho = 0.5 * (x - y);
-    cf = SQRT(rhoi *      cf2rho);
-    cs = SQRT(rhoi * FABS(cs2rho));
+    real x = a2rho + b2;
+    real y = SQRT(FABS( x * x - 4. * a2rho * bx2 ));
+    real cf2rho = 0.5 * (x + y);
+    real cs2rho = 0.5 * (x - y);
+    real cf = SQRT(rhoi *      cf2rho);
+    real cs = SQRT(rhoi * FABS(cs2rho));
 
-    z = 1. / (cf2rho - cs2rho);
+    real z = 1. / (cf2rho - cs2rho);
 
+    real alphaf,alphas;
     if (cf <= cs) {
       alphaf = 1.;
       alphas = 0.;
@@ -184,24 +179,24 @@ void prim2char_1(real **vc, real **W1,
       alphas = SQRT(z * FABS(cf2rho - a2rho));
     }
 
-    nf = 0.5/(a2rho*rhoi);
-    qf_ = nf * cf * alphaf * s;
-    qs_ = nf * cs * alphas * s;
+    real nf = 0.5/(a2rho*rhoi);
+    real qf_ = nf * cf * alphaf * s;
+    real qs_ = nf * cs * alphas * s;
 
-    alphaf_ = nf * alphaf;
-    alphas_ = nf * alphas;
+    real alphaf_ = nf * alphaf;
+    real alphas_ = nf * alphas;
 
-    rhoisr = SQRT(rhoi);
-    arhoisr = a * rhoisr;
-    Af_ = alphaf_ * arhoisr;
-    As_ = alphas_ * arhoisr;
+    real rhoisr = SQRT(rhoi);
+    real arhoisr = a * rhoisr;
+    real Af_ = alphaf_ * arhoisr;
+    real As_ = alphas_ * arhoisr;
 
     x = s * rhoisr;
 
-    betay=0.;
-    betaz=0.;
+    real betay=0.;
+    real betaz=0.;
     if (bperp2 != 0.) {
-      bperpi = 1./SQRT(bperp2);
+      real bperpi = 1./SQRT(bperp2);
       betay = bperpi * w_by;
       betaz = bperpi * w_bz;
     }
@@ -236,24 +231,20 @@ void prim2char_1(real **vc, real **W1,
 
 #else
 
-  real a2i, ai;
-  real vc_rho, vc_vx,vc_vy,vc_vz, vc_p;
-  real w_rho, w_p;
-
 #pragma omp simd simdlen(SIMD_WIDTH)
   for (ints i=i1; i<=i2; ++i) {
 
-    w_rho = W1[RHO][i];
-    w_p = W1[PR][i];
+    real w_rho = W1[RHO][i];
+    real w_p = W1[PR][i];
 
-    vc_rho = vc[RHO][i];
-    vc_vx  = vc[VX][i];
-    vc_vy  = vc[VY][i];
-    vc_vz  = vc[VZ][i];
-    vc_p   = vc[PR][i];
+    real vc_rho = vc[RHO][i];
+    real vc_vx  = vc[VX][i];
+    real vc_vy  = vc[VY][i];
+    real vc_vz  = vc[VZ][i];
+    real vc_p   = vc[PR][i];
 
-    a2i = w_rho / (gam * w_p);
-    ai = SQRT(a2i);
+    real a2i = w_rho / (gam * w_p);
+    real ai = SQRT(a2i);
 
     vc[RHO][i] = 0.5 * (a2i * vc_p - ai * w_rho * vc_vx);
     vc[VX][i]  = vc_rho - a2i * vc_p;
@@ -275,49 +266,44 @@ void char2prim_1(real **vc, real **W1,
 
 #if MFIELD
 
-  real rhoi,rhosr, s, a2rho,a, arhosr, bx2, bperp2,bperpi, b2;
-  real x,y,z, cf2rho,cs2rho, cf,cs, alphaf,alphas, qf,qs, Af,As, betay,betaz;
-
-  real vc_rho, vc_vx, vc_vy, vc_vz, vc_p, vc_by, vc_bz;
-  real w_rho,  w_p,  w_bx,  w_by, w_bz;
-
 #pragma omp simd simdlen(SIMD_WIDTH)
   for (ints i=i1; i<=i2; ++i) {
 
-    vc_rho = vc[RHO][i];
-    vc_vx  = vc[VX][i];
-    vc_vy  = vc[VY][i];
-    vc_vz  = vc[VZ][i];
-    vc_p   = vc[PR][i];
-    vc_by  = vc[BY][i];
-    vc_bz  = vc[BZ][i];
+    real vc_rho = vc[RHO][i];
+    real vc_vx  = vc[VX][i];
+    real vc_vy  = vc[VY][i];
+    real vc_vz  = vc[VZ][i];
+    real vc_p   = vc[PR][i];
+    real vc_by  = vc[BY][i];
+    real vc_bz  = vc[BZ][i];
 
-    w_rho = W1[RHO][i];
-    w_p   = W1[PR][i];
-    w_bx  = W1[BX][i];
-    w_by  = W1[BY][i];
-    w_bz  = W1[BZ][i];
+    real w_rho = W1[RHO][i];
+    real w_p   = W1[PR][i];
+    real w_bx  = W1[BX][i];
+    real w_by  = W1[BY][i];
+    real w_bz  = W1[BZ][i];
 
-    rhoi = 1./w_rho;
+    real rhoi = 1./w_rho;
 
-    s = FSIGN(w_bx);
+    real s = FSIGN(w_bx);
 
-    a2rho = gam * w_p;
-    a = SQRT(a2rho * rhoi);
+    real a2rho = gam * w_p;
+    real a = SQRT(a2rho * rhoi);
 
-    bx2    = SQR(w_bx);
-    bperp2 = SQR(w_by) + SQR(w_bz);
-    b2 = bx2 + bperp2;
+    real bx2    = SQR(w_bx);
+    real bperp2 = SQR(w_by) + SQR(w_bz);
+    real b2 = bx2 + bperp2;
 
-    x = a2rho + b2;
-    y = SQRT(FABS( x * x - 4. * a2rho * bx2 ));
-    cf2rho = 0.5 * (x + y);
-    cs2rho = 0.5 * (x - y);
-    cf = SQRT(rhoi *      cf2rho);
-    cs = SQRT(rhoi * FABS(cs2rho));
+    real x = a2rho + b2;
+    real y = SQRT(FABS( x * x - 4. * a2rho * bx2 ));
+    real cf2rho = 0.5 * (x + y);
+    real cs2rho = 0.5 * (x - y);
+    real cf = SQRT(rhoi *      cf2rho);
+    real cs = SQRT(rhoi * FABS(cs2rho));
 
-    z = 1. / (cf2rho - cs2rho);
+    real z = 1. / (cf2rho - cs2rho);
 
+    real alphaf,alphas;
     if (cf <= cs) {
       alphaf = 1.;
       alphas = 0.;
@@ -335,22 +321,21 @@ void char2prim_1(real **vc, real **W1,
       alphas = SQRT(z * FABS(cf2rho - a2rho));
     }
 
-    qf = cf * alphaf * s;
-    qs = cs * alphas * s;
+    real qf = cf * alphaf * s;
+    real qs = cs * alphas * s;
 
-    rhosr = SQRT(w_rho);
-    arhosr = a * rhosr;
-    Af = alphaf * arhosr;
-    As = alphas * arhosr;
+    real rhosr = SQRT(w_rho);
+    real arhosr = a * rhosr;
+    real Af = alphaf * arhosr;
+    real As = alphas * arhosr;
 
-    betay=0.;
-    betaz=0.;
+    real betay=0.;
+    real betaz=0.;
     if (bperp2 != 0.) {
-      bperpi = 1./SQRT(bperp2);
+      real bperpi = 1./SQRT(bperp2);
       betay = bperpi * w_by;
       betaz = bperpi * w_bz;
     }
-
 
     vc[RHO][i] = w_rho * (alphaf * (vc_rho + vc_bz) + alphas * (vc_vy + vc_p)) + vc_vz;
 
@@ -369,22 +354,19 @@ void char2prim_1(real **vc, real **W1,
 
 #else
 
-  real a, a2, rhoi;
-  real vc_rho, vc_vx,vc_vy,vc_vz, vc_p;
-
 #pragma omp simd simdlen(SIMD_WIDTH)
   for (ints i=i1; i<=i2; ++i) {
 
-    vc_rho = vc[RHO][i];
-    vc_vx  = vc[VX][i];
-    vc_vy  = vc[VY][i];
-    vc_vz  = vc[VZ][i];
-    vc_p   = vc[PR][i];
+    real vc_rho = vc[RHO][i];
+    real vc_vx  = vc[VX][i];
+    real vc_vy  = vc[VY][i];
+    real vc_vz  = vc[VZ][i];
+    real vc_p   = vc[PR][i];
 
-    rhoi = 1./W1[RHO][i];
+    real rhoi = 1./W1[RHO][i];
 
-    a2 = gam * rhoi * W1[PR][i];
-    a = SQRT(a2);
+    real a2 = gam * rhoi * W1[PR][i];
+    real a = SQRT(a2);
 
     vc[RHO][i] = vc_rho + vc_vx + vc_p;
     vc[VX][i] = a * rhoi * (vc_p - vc_rho);

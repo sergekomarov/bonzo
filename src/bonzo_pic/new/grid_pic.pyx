@@ -28,9 +28,10 @@ cdef class BnzGrid:
 
   def __cinit__(self, bytes usr_dir):
 
+    # self.coord = GridCoord() # structure
     self.data = GridData()
     self.scr = GridScratch()
-    # self.bc = GridBC()
+    self.bc = GridBC()
 
     self.usr_dir = usr_dir
 
@@ -59,22 +60,18 @@ cdef class BnzGrid:
 
     # Set the number of ghost cells.
 
-    tintegr  = read_param("computation", "tintegr", 's',usr_dir)
-    reconstr = read_param("computation", "reconstr", 's',usr_dir)
+    Nfilt = read_param("computation", "Nfilt", 'i',usr_dir)
+    gc.ng = mini(4, maxi(1, Nfilt))
 
-    if tintegr=='vl':
-      if reconstr=='const': gc.ng=2
-      elif reconstr=='linear' or reconstr=='weno': gc.ng=3
-      elif reconstr=='parab': gc.ng=4
-    if tintegr=='rk3':
-      gc.ng=9
-
-    gc.Ntot_glob[0] = gc.Nact_glob[0] + 2*gc.ng
-    IF D2D: gc.Ntot_glob[1] = gc.Nact_glob[1] + 2*gc.ng
+    gc.Ntot_glob[0] = gc.Nact_glob[0] + 2*gc.ng+1
+    IF D2D: gc.Ntot_glob[1] = gc.Nact_glob[1] + 2*gc.ng+1
     ELSE:   gc.Ntot_glob[1] = 1
-    IF D3D: gc.Ntot_glob[2] = gc.Nact_glob[2] + 2*gc.ng
+    IF D3D: gc.Ntot_glob[2] = gc.Nact_glob[2] + 2*gc.ng+1
     ELSE:   gc.Ntot_glob[2] = 1
 
+    for n in range(3):
+      gc.lmin[n] = 0.
+      gc.lmax[n] = <real>gc.Ntot_glob[n]
 
     # Set min/max indices of active cells.
     # (will be reset when domain decomposition is used)
@@ -97,52 +94,29 @@ cdef class BnzGrid:
     gc.rank=0
     for k in range(3): gc.pos[k]=0
 
+    #-----------------------------------------------------------------------
 
-    # Choose coordinate geometry and set global grid limits.
+    # Set boundary condition parameters.
 
-    geom = read_param("computation","geometry",'s',usr_dir)
+    cdef ints i,k
+    cdef GridBC gbc = self.bc
 
-    if geom=='car':
-      gc.coord_geom=CG_CAR
-      lmin[0], lmax[0] = 0.,1.
-      lmin[1], lmax[1] = 0.,1.
-      lmin[2], lmax[2] = 0.,1.
-    elif geom=='cyl':
-      gc.coord_geom==CG_CYL
-      lmin[0], lmax[0] = 0., 1.
-      lmin[1], lmax[1] = 0., 2*B_PI
-      lmin[2], lmax[2] = 0., 1.
-    elif geom=='sph':
-      gc.coord_geom=CG_SPH
-      lmin[0], lmax[0] = 0., 1.
-      lmin[1], lmax[1] = 0., B_PI
-      lmin[2], lmax[2] = 0., 2*B_PI
+    for i in range(3):
+      for k in range(2):
+        gbc.bc_grid_funcs[i][k] = NULL
 
-    # Set global coordinate limits.
+    for i in range(3):
+      for k in range(2):
+        gbc.bc_exch_funcs[i][k] = NULL
 
-    lmin[0] = read_param("computation","xmin",'f',usr_dir)
-    lmax[0] = read_param("computation","xmax",'f',usr_dir)
+    # Set boundary condition flags.
 
-    IF D2D:
-      lmin[1] = read_param("computation","ymin",'f',usr_dir)
-      lmax[1] = read_param("computation","ymax",'f',usr_dir)
-
-    IF D3D:
-      lmin[2] = read_param("computation","zmin",'f',usr_dir)
-      lmax[2] = read_param("computation","zmax",'f',usr_dir)
-
-    # Correct boundaries as appropriate for cylindrical or spherical coordinates.
-
-    if gc.coord_geom==CG_CYL or gc.coord_geom==CG_SPH:
-      for n in range(3):
-        if lmin[n]<0.: lmin[n]=0.
-
-    if gc.coord_geom==CG_CYL:
-      if lmax[1]>=2*B_PI-1e-2: lmax[1] = 2*B_PI
-
-    if gc.coord_geom==CG_SPH:
-      if lmax[1]>=B_PI-1e-2: lmax[1] = B_PI
-      if lmax[2]>=2*B_PI-1e-2: lmax[2] = 2*B_PI
+    gbc.bc_flags[0][0] = read_param("physics", "bc_x1", 'i',usr_dir)
+    gbc.bc_flags[0][1] = read_param("physics", "bc_x2", 'i',usr_dir)
+    gbc.bc_flags[1][0] = read_param("physics", "bc_y1", 'i',usr_dir)
+    gbc.bc_flags[1][1] = read_param("physics", "bc_y2", 'i',usr_dir)
+    gbc.bc_flags[2][0] = read_param("physics", "bc_z1", 'i',usr_dir)
+    gbc.bc_flags[2][1] = read_param("physics", "bc_z2", 'i',usr_dir)
 
 
   # =================================================================
@@ -151,6 +125,7 @@ cdef class BnzGrid:
 
     IF MPI:
       self.domain_decomp()
+      self.init_bc_buffer()
     self.init_data()
     # self.init_scratch()
 
@@ -272,13 +247,13 @@ cdef class BnzGrid:
 
       for k in range(3): gc.Nact[k] /= gc.size[k]
 
-      gc.Ntot[0] = gc.Nact[0] + 2*gc.ng
+      gc.Ntot[0] = gc.Nact[0] + 2*gc.ng + 1
       IF D2D:
-        gc.Ntot[1] = gc.Nact[1] + 2*gc.ng
+        gc.Ntot[1] = gc.Nact[1] + 2*gc.ng + 1
       ELSE:
         gc.Ntot[1] = 1
       IF D3D:
-        gc.Ntot[2] = gc.Nact[2] + 2*gc.ng
+        gc.Ntot[2] = gc.Nact[2] + 2*gc.ng + 1
       ELSE:
         gc.Ntot[2] = 1
 
@@ -291,8 +266,33 @@ cdef class BnzGrid:
       ELSE:   gc.k1, gc.k2 = 0,0
 
 
-  # end of IF MPI
+    # ===================================================================
 
+    cdef void init_bc_buffer(self):
+
+      cdef GridCoord *gc = &(self.coord)
+
+      cdef:
+        ints bufsize, n, ndim=1
+        ints Nxyz =  maxi(maxi(gc.Ntot[0],gc.Ntot[1]), gc.Ntot[2])
+
+      IF D2D: ndim += 1
+      IF D3D: ndim += 1
+
+      n = 9 * gc.ng
+      if n==3:
+        bufsize = (Nxyz+1)**2 * n
+      elif ndim==2:
+        bufsize = (Nxyz+1) * n
+      else:
+        bufsize = n
+
+      self.bc.sendbuf = np.zeros((2,bufsize), dtype=np_real)
+      self.bc.recvbuf = np.zeros((2,bufsize), dtype=np_real)
+      self.bc.recvbuf_size = bufsize
+      self.bc.sendbuf_size = bufsize
+
+  # end of IF MPI
 
 
   # =================================================================
@@ -306,25 +306,12 @@ cdef class BnzGrid:
 
     sh_3 = (3, gc.Ntot[2], gc.Ntot[1], gc.Ntot[0])
 
-    sh_u = (NMODES, gc.Ntot[2], gc.Ntot[1], gc.Ntot[0])
-    sh_4 = (4,      gc.Ntot[2], gc.Ntot[1], gc.Ntot[0])
+    gd.ee = np.zeros(sh_3, dtype=np_real)
+    gd.bf = np.zeros(sh_3, dtype=np_real)
+    gd.ce = np.zeros(sh_3, dtype=np_real)
 
-    # cell-centered conserved variables
-    gd.cons = np.zeros(sh_u, dtype=np_real)
-
-    # cell-centered primitive variables
-    gd.prim = np.zeros(sh_u, dtype=np_real)
-
-    IF MFIELD:
-      # face-centered magnetic field
-      gd.bf = np.zeros(sh_3, dtype=np_real)
-    ELSE:
-      # want to be able to use B as a function parameter without function overloading
-      gd.bf = None
-
-    IF MHDPIC:
-      # array to store particle feedback force
-      gd.fcoup = np.zeros(sh_4, dtype=np_real)
+    IF MPI:
+      scr.ce_tmp = np.zeros(sh_3, dtype=np_real)
 
 
   # =============================================================
@@ -333,47 +320,18 @@ cdef class BnzGrid:
 
     cdef:
       GridCoord *gc = &(self.coord)
-      # GridBC    gbc =   self.bc
-
-    # Free coordinate arrays.
-
-    free_2d_array(gc.lf)
-    free_2d_array(gc.lv)
-
-    free_2d_array(gc.dlf)
-    free_2d_array(gc.dlv)
-
-    free_2d_array(gc.dlf_inv)
-    free_2d_array(gc.dlv_inv)
-
-    free_2d_array(gc.hp_ratio)
-    free_2d_array(gc.hm_ratio)
-
-    free_3d_array(gc.cm)
-    free_3d_array(gc.cp)
-
-    if gc.coord_geom==CG_CYL or gc.coord_geom==CG_SPH:
-      free(gc.rinv_mean)
-      free(gc.d2r)
-      free(gc.src_coeff1)
-    if gc.coord_geom==CG_SPH:
-      free(gc.d3r)
-      free(gc.sin_thf)
-      free(gc.sin_thc)
-      free(gc.dcos_thf)
-      free_2d_array(gc.src_coeff2)
+      GridBC    gbc =   self.bc
 
     IF MPI: free_3d_array(gc.ranks)
 
     # Free BC pointers.
 
-    # cdef ints i,k
-    #
-    # for i in range(3):
-    #   for k in range(2):
-    #     gbc.bc_grid_funcs[i][k] = NULL
-    #
-    # IF MHDPIC:
-    #   for i in range(3):
-    #     for k in range(2):
-    #       gbc.bc_exch_funcs[i][k] = NULL
+    cdef ints i,k
+
+    for i in range(3):
+      for k in range(2):
+        gbc.bc_grid_funcs[i][k] = NULL
+
+    for i in range(3):
+      for k in range(2):
+        gbc.bc_exch_funcs[i][k] = NULL

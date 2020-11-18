@@ -30,89 +30,13 @@ typedef double real;
 
 //===========================================================
 
-// number of variables in the Riemann problem
-
-#if (!MFIELD && !TWOTEMP)
-#define NMODES 6
-#endif
-
-#if (!MFIELD && TWOTEMP)
-#define NMODES 7
-#endif
-
-#if (MFIELD && !CGL && !TWOTEMP)
-#define NMODES 9
-#endif
-
-#if (MFIELD && ((CGL && !TWOTEMP) || (!CGL && TWOTEMP)))
-#define NMODES 10
-#endif
-
-#if (MFIELD && CGL && TWOTEMP)
-#define NMODES 11
-#endif
-
-
-// indices of fields in the arrays of conserved/primitive variables
-
-/*
-RHO: mass density, V: velocities, M: momenta
-EN: total energy density
-PPD: perpendicular ion pressure
-LA: rho * log(p_perp/p_par * rho^2 / B^3)
-PR: mean ion pressure = (p_par + 2*p_perp)/3
-SE: electron entropy log(pe/rhoe^gamma)
-PSC: passive scalar
-BC: cell-centered magnetic field
-B:  face-centered magnetic field
-*/
-
-// conserved variables
-enum {RHO=0, MX,MY,MZ, EN};
-// primitive variables
-enum {VX=1,VY,VZ, PR};
-
-#if !MFIELD
-
-#define NVARS NMODES
-enum {PSC=NMODES-1};
-// hack for boundary conditions to avoid setting BC for magnetic fields
-enum {BXC=990, BYC, BZC};
-enum {BXF=993, BYF, BZF};
-
-#else
-
-#define NVARS NMODES+3
-
-#if MHDPIC
+#define NVARS 9
 #define NPRT_PROP 10
-#endif
-
-enum {PSC=NMODES-4};
-enum {BX=NMODES-3, BY=NMODES-2, BZ=NMODES-1};
-// indices used to set BC for cell- and face-centered magnetic fields
-enum {BXC=BX, BYC=BY, BZC=BZ};
-enum {BXF=BZ+1, BYF=BZ+2, BZF=BZ+3};
-#endif
-
-#if CGL
-enum {LA=EN+1};
-enum {PPD=PR+1};
-#endif
-
-#if TWOTEMP
-enum {SE=PSC-1};
-enum {PE=PSC-1};
-#endif
-
-// indices of STS coefficients
-enum {MU=0,NU,MUT,GAMT};
+// indices of electromagnetic fields and particle currents
+enum {EX=0,EY,EZ, BX,BY,BZ, JX,JY,JZ};
 
 // names of coordinate axes
 enum {XAX,YAX,ZAX};
-
-// isotropic/anisotropic electron thermal conduction
-enum {TC_ISO, TC_ANISO};
 
 
 // ====================================================================

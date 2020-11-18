@@ -36,26 +36,6 @@ cdef inline real cube(real a) nogil:
   return a*a*a
 
 
-# ====================================================================
-
-# Output to stdout only if root process.
-
-cdef void print_root(char *fmt, ...) nogil:
-
-  cdef:
-    va_list args
-    int rank = 0
-
-  IF MPI: rank = mpi.COMM_WORLD.Get_rank()
-
-  if rank==0:
-    va_start(args, fmt)
-    vfprintf(stdout, fmt, args)
-    va_end(args)
-
-  return
-
-
 # ===================================================================
 
 # Calculate time difference in milliseconds.
@@ -238,16 +218,24 @@ cdef void swap_2d_array_ptrs(real **A, real **B, ints nx) nogil:
 
   cdef:
     ints i
-    real ** tmp
-    # real *tmp
+    # real ** tmp
+    real *tmp
 
-  # for i in range(nx):
-  #
-  #   tmp = A[i]
-  #   A[i] = B[i]
-  #   B[i] = tmp
+  for i in range(nx):
+
+    tmp = A[i]
+    A[i] = B[i]
+    B[i] = tmp
 
   tmp = A
+  A = B
+  B = tmp
+
+# =======================================================================
+
+cdef void swap_array_ptrs(void *A, void *B) nogil:
+
+  cdef void *tmp = A
   A = B
   B = tmp
 
@@ -328,6 +316,25 @@ cdef real**** memview2carray_4d(real4d A, ints n1, ints n2, ints n3) nogil:
 #   return A
 
 
+# ====================================================================
+
+# Output to stdout only if root process.
+
+cdef void print_root(char *fmt, ...):
+
+  cdef:
+    va_list args
+    int rank = 0
+
+  IF MPI: rank = mpi.COMM_WORLD.Get_rank()
+
+  if rank==0:
+    va_start(args, fmt)
+    vfprintf(stdout, fmt, args)
+    va_end(args)
+
+  return
+  
 
 # =======================================================================
 

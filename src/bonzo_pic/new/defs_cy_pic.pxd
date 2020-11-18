@@ -54,32 +54,6 @@ cdef extern from "defs.h" nogil:
   int NVARS
   enum: XAX,YAX,ZAX
 
-
 cdef extern from "defs.h" nogil:
-
-  int NMODES
-
-  enum: RHO, MX,MY,MZ, EN
-  enum: VX,VY,VZ, PR
-  enum: PSC
-  enum: BXC,BYC,BZC
-  enum: BXF,BYF,BZF
-  enum: MU,NU,MUT,GAMT
-
-IF MFIELD:
-  cdef extern from "defs.h" nogil:
-    enum: BX,BY,BZ
-
-IF CGL:
-  cdef extern from "defs.h" nogil:
-    enum: LA
-    enum: PPD
-
-IF TWOTEMP:
-  cdef extern from "defs.h" nogil:
-    enum: SE
-    enum: PE
-
-IF MHDPIC:
-  cdef extern from "defs.h" nogil:
-    int NPRT_PROP
+  enum: EX,EY,EZ, BX,BY,BZ, JX,JY,JZ
+  int NPRT_PROP

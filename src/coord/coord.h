@@ -12,6 +12,7 @@ typedef enum {
   CG_SPH
 } CoordGeom;
 
+
 typedef struct {
 
   // Cells and Indices.
@@ -29,40 +30,42 @@ typedef struct {
 
   real lmin[3];          // coordinates of left border of global domain
   real lmax[3];          // right border of global domain
-  //real l1[3];          // left border of local grid
-  //real l2[3];          // right border of local grid
-
-#if !PIC
 
   real **lf;             // coordinates of cell faces
   real **lv;             // volume coordinates
 
-  // Cell spacings.
+  // cell spacings
   real **dlf;            // between cell faces
   real **dlv;            // between cell centers
-  real **dlf_inv;
-  real **dlv_inv;        // inverse spacings
-
-  // Auxilary coefficients for non-cartesian coordinates.
-  real *rinv_mean;
-  real *src_coeff1;
-  real **src_coeff2;
-  real **hp_ratio;
-  real **hm_ratio;
-
-  real ***dv_inv;        // inverse cell volumes
-  real ****da;           // areas of cell faces
-  real ****ds;           // lengths of cell edges
+  real **dlf_inv;        // inverse spacings
+  real **dlv_inv;
 
   CoordGeom  coord_geom;      // coordinate geometry
   CoordScale coord_scale[3];  // scale of coordinate axes
 
-#endif
+  // auxilary coefficients to calculate cell volumes, areas, and lengths
+  real *rinv_mean;
+  real *d2r;
+  real *d3r;
+  real *sin_thf;
+  real *sin_thc;
+  real *dcos_thf;
+
+  // auxilary coefficients to calculate geometric source terms
+  real *src_coeff1;
+  real **src_coeff2;
+
+  // coefficients used in parabolic reconstruction (Mignone paper)
+  real **hp_ratio;
+  real **hm_ratio;
+
+  // interpolation coefficients
+  real **cm
+  real **cp
 
   // MPI block IDs
   ints rank;             // MPI rank of the grid
   ints pos[3];           // 3D index of the grid on the current processor
-
 
 #if MPI
 

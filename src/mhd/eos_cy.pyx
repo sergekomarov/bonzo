@@ -20,13 +20,13 @@ cdef void cons2prim_3(real4d w, real4d u, ints lims[6], real gam) nogil:
 
   with nogil, parallel(num_threads=OMP_NT):
 
-    u1 = <real**>calloc(NMODES, sizeof(real*))
-    w1 = <real**>calloc(NMODES, sizeof(real*))
+    u1 = <real**>calloc(NMODE, sizeof(real*))
+    w1 = <real**>calloc(NMODE, sizeof(real*))
 
     for k in prange(lims[4],lims[5]+1, schedule='dynamic'):
       for j in range(lims[2],lims[3]+1):
 
-        for n in range(NMODES):
+        for n in range(NMODE):
           u1[n] = &(u[n,k,j,0])
           w1[n] = &(w[n,k,j,0])
 
@@ -47,13 +47,13 @@ cdef void prim2cons_3(real4d u, real4d w, ints lims[6], real gam) nogil:
 
   with nogil, parallel(num_threads=OMP_NT):
 
-    u1 = <real**>calloc(NMODES, sizeof(real*))
-    w1 = <real**>calloc(NMODES, sizeof(real*))
+    u1 = <real**>calloc(NMODE, sizeof(real*))
+    w1 = <real**>calloc(NMODE, sizeof(real*))
 
     for k in prange(lims[4],lims[5]+1, schedule='dynamic'):
       for j in range(lims[2],lims[3]+1):
 
-        for n in range(NMODES):
+        for n in range(NMODE):
           u1[n] = &(u[n,k,j,0])
           w1[n] = &(w[n,k,j,0])
 

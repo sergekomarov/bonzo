@@ -6,10 +6,10 @@ cimport numpy as np
 from cython.parallel import prange, parallel, threadid
 
 from bnz.utils cimport calloc_3d_array, calloc_4d_array, free_3d_array
-from bnz.read_config import read_param
-cimport bnz.problem
+from bnz.io.read_config import read_param
+from bnz.problem.problem cimport set_phys_funcs_user
 IF MHDPIC:
-  from bnz.utils_particle cimport getweight1, getweight2
+  from bnz.utils_prt cimport getweight1, getweight2
 
 
 # =======================================
@@ -183,74 +183,74 @@ cdef class BnzIntegr:
     # self.grav_pot_func = NULL
 
 
-# =================================================================
+  # =================================================================
 
-cdef void init_data(self, GridCoord *gc):
+  cdef void init(self, GridCoord *gc):
 
-  cdef:
-    IntegrData dat = self.data
-    IntegrScratch scr = self.scratch
-    ints Nx=gc.Ntot[0], Ny=gc.Ntot[1], Nz=gc.Ntot[2]
+    cdef:
+      IntegrData dat = self.data
+      IntegrScratch scr = self.scratch
+      ints Nx=gc.Ntot[0], Ny=gc.Ntot[1], Nz=gc.Ntot[2]
 
-  # allocate arrays used by MHD integrator
+    # allocate arrays used by MHD integrator
 
-  sh_u = (NMODES,Nz,Ny,Nx)
-  sh_3 = (3,Nz,Ny,Nx)
+    sh_u = (NMODE,Nz,Ny,Nx)
+    sh_3 = (3,Nz,Ny,Nx)
 
-  # predictor-step arrays of cell-centered conserved variables
-  dat.cons_s =  np.zeros(sh_u, dtype=np_real)
-  if self.tintegr==TINT_RK3:
-    dat.cons_ss =  np.zeros(sh_u, dtype=np_real)
-
-  # Godunov fluxes
-  dat.flux_x = np.zeros(sh_u, dtype=np_real)
-  dat.flux_y = np.zeros(sh_u, dtype=np_real)
-  dat.flux_z = np.zeros(sh_u, dtype=np_real)
-
-  IF MFIELD:
-
-    # predictor-step arrays of face-centered magnetic field
-    dat.bf_s =  np.zeros(sh_3, dtype=np_real)
+    # predictor-step arrays of cell-centered conserved variables
+    dat.cons_s =  np.zeros(sh_u, dtype=np_real)
     if self.tintegr==TINT_RK3:
-      dat.bf_ss =  np.zeros(sh_3, dtype=np_real)
+      dat.cons_ss =  np.zeros(sh_u, dtype=np_real)
 
-    # edge- and cell-centered electric field
-    dat.ee = np.zeros(sh_3, dtype=np_real)
-    dat.ec = np.zeros(sh_3, dtype=np_real)
+    # Godunov fluxes
+    dat.flux_x = np.zeros(sh_u, dtype=np_real)
+    dat.flux_y = np.zeros(sh_u, dtype=np_real)
+    dat.flux_z = np.zeros(sh_u, dtype=np_real)
 
-  ELSE:
+    IF MFIELD:
 
-    dat.bf_s = None
-    if self.tintegr==TINT_RK3:
-      dat.bf_ss = None
-    dat.ee  = None
-    dat.ec = None
+      # predictor-step arrays of face-centered magnetic field
+      dat.bf_s =  np.zeros(sh_3, dtype=np_real)
+      if self.tintegr==TINT_RK3:
+        dat.bf_ss =  np.zeros(sh_3, dtype=np_real)
 
-  IF MPI and MHDPIC:
-    # temporary array for particle deposit exchange at boundaries
-    dat.fcoup_tmp = np.zeros((4,Nz,Ny,Nx), dtype=np_real)
+      # edge- and cell-centered electric field
+      dat.ee = np.zeros(sh_3, dtype=np_real)
+      dat.ec = np.zeros(sh_3, dtype=np_real)
 
-  # allocate scratch arrays used in reconstruction and Godunov flux calculation
+    ELSE:
 
-  scr.w_rcn = <real****>calloc_4d_array(OMP_NT, 8, NMODES, Nx+4)
-  scr.wl    =  <real***>calloc_3d_array(OMP_NT,    NMODES, Nx+4)
-  scr.wl_   =  <real***>calloc_3d_array(OMP_NT,    NMODES, Nx+4)
-  scr.wr    =  <real***>calloc_3d_array(OMP_NT,    NMODES, Nx+4)
+      dat.bf_s = None
+      if self.tintegr==TINT_RK3:
+        dat.bf_ss = None
+      dat.ee  = None
+      dat.ec = None
 
-  # set pointers to user-defined physics functions (e.g. gravitational potential)
-  problem.set_phys_ptrs_user(phys)
+    IF MPI and MHDPIC:
+      # temporary array for particle deposit exchange at boundaries
+      dat.fcoup_tmp = np.zeros((4,Nz,Ny,Nx), dtype=np_real)
 
-  # # initialize solenoidal driving force
-  # if phys.f != 0.: turb_driv.init_turb_driv(grid, phys)
-  #
-  # # set static gravitational potential
-  # if phys.g0 != 0: gravity.init_gravity(grid, phys)
-  #
-  # # initialize diffusion integrator
-  # if (phys.mu != 0 or phys.eta !=0 or phys.mu4 != 0 or phys.eta4 != 0
-  #   or phys.kappa0 != 0 or phys.kL != 0 or phys.nuiic0 != 0):
-  #
-  #   diffuse.init_diffuse(grid, phys, method.sts)
+    # allocate scratch arrays used in reconstruction and Godunov flux calculation
+
+    scr.w_rcn = <real****>calloc_4d_array(OMP_NT, 8, NMODE, Nx+4)
+    scr.wl    =  <real***>calloc_3d_array(OMP_NT,    NMODE, Nx+4)
+    scr.wl_   =  <real***>calloc_3d_array(OMP_NT,    NMODE, Nx+4)
+    scr.wr    =  <real***>calloc_3d_array(OMP_NT,    NMODE, Nx+4)
+
+    # set pointers to user-defined physics functions (e.g. gravitational potential)
+    set_phys_ptrs_user(self)
+
+    # # initialize solenoidal driving force
+    # if phys.f != 0.: turb_driv.init_turb_driv(grid, phys)
+    #
+    # # set static gravitational potential
+    # if phys.g0 != 0: gravity.init_gravity(grid, phys)
+    #
+    # # initialize diffusion integrator
+    # if (phys.mu != 0 or phys.eta !=0 or phys.mu4 != 0 or phys.eta4 != 0
+    #   or phys.kappa0 != 0 or phys.kL != 0 or phys.nuiic0 != 0):
+    #
+    #   diffuse.init_diffuse(grid, phys, method.sts)
 
 
   def __dealloc__(self):

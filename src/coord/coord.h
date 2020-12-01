@@ -21,7 +21,7 @@ typedef struct {
   ints Ntot[3];          // numbers of cells including ghosts
   ints Nact_glob[3];     // active cells in full domain
   ints Ntot_glob[3];     // all cells in full domain
-  int ng;                // number of ghost cells
+  ints ng;                // number of ghost cells
   ints i1,i2;            // min and max indices of active cells on local grid
   ints j1,j2;
   ints k1,k2;
@@ -40,8 +40,8 @@ typedef struct {
   real **dlf_inv;        // inverse spacings
   real **dlv_inv;
 
-  CoordGeom  coord_geom;      // coordinate geometry
-  CoordScale coord_scale[3];  // scale of coordinate axes
+  CoordGeom  geom;      // coordinate geometry
+  CoordScale scale[3];  // scale of coordinate axes
 
   // auxilary coefficients to calculate cell volumes, areas, and lengths
   real *rinv_mean;
@@ -67,8 +67,6 @@ typedef struct {
   ints rank;             // MPI rank of the grid
   ints pos[3];           // 3D index of the grid on the current processor
 
-#if MPI
-
   // MPI-related data.
 
   ints size[3];          // number of MPI blocks (grids) in x,y,z directions
@@ -78,7 +76,5 @@ typedef struct {
 
   ints nbr_ranks[3][2];  // ranks of neighboring grids
   // nbr_ids[axis,L(0)/R(1)]
-
-#endif
 
 } GridCoord;

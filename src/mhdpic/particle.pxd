@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs_cy cimport *
+from bnz.coord.grid cimport *
 
 cdef extern from "particle.h" nogil:
 
@@ -50,27 +51,7 @@ cdef extern from "particle.h" nogil:
     ints *id    # particle ID
 
 
-# Particle boundary conditions.
-
-cdef class BnzSim
-
-# particle BC function pointer
-ctypedef void (*BCFuncPrt)(BnzSim)
-
-cdef class ParticleBC:
-
-  # BC flags
-  cdef int bc_flags[3][2]
-
-  # BC function pointers
-  cdef BCFuncPrt bc_prt_funcs[3][2]
-
-  # BC buffers
-  IF MPI:
-    cdef:
-      real2d sendbuf, recvbuf
-      ints recvbuf_size, sendbuf_size
-
+cdef class ParticleBc
 
 # Particle class.
 
@@ -79,9 +60,8 @@ cdef class BnzParticles:
   cdef:
     ParticleProp *prop
     ParticleData *data
-    ParticleBC bc
+    ParticleBc bc
 
-  cdef:
-    void init(self, *ints)
-    void init_data(self, *ints)
-    void init_bc_buffer(self, *ints)
+  cdef bytes usr_dir
+
+  cdef void init(self, GridCoord*)

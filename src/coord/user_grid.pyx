@@ -24,13 +24,6 @@ cpdef set_user_coord_x(GridCoord *gc):
 
   gc.lf[0][i+1] = x+dx
 
-    # # convert to local index on current processor if it belongs there
-    # iloc = i - gc.pos[0]*gc.Nact[0]
-    # if (iloc-gc.ng)>=0 and (iloc-gc.ng)<gc.Nact[0]:
-    #   gc.lf[0,iloc] = x
-
-  # gc.lf[0][iloc+1] = x+dx
-
 
 cpdef set_user_coord_y(GridCoord *gc):
 
@@ -47,15 +40,6 @@ cpdef set_user_coord_y(GridCoord *gc):
 
   gc.lf[1][j+1] = y+dy
 
-  # for j in range(gc.Ntot_glob[1]):
-  #
-  #   y = dy*(j-gc.j1)
-  #
-  #   if gind2lind_y(&jloc, j, gc) != -1:
-  #     gc.lf[1,jloc] = y
-  #
-  # gc.lf[1,jloc+1] = y+dy
-
 
 cpdef set_user_coord_z(GridCoord *gc):
 
@@ -71,12 +55,3 @@ cpdef set_user_coord_z(GridCoord *gc):
     gc.lf[2][k] = z0 + (k-gc.k1)*dz
 
   gc.lf[2][k+1] = z+dz
-
-  # for k in range(gc.Ntot_glob[2]):
-  #
-  #   z = dz*(k-gc.k1)
-  #
-  #   if gind2lind_z(&kloc, k, gc) != -1:
-  #     gc.lf[2,kloc] = z
-  #
-  #   gc.lf[2,kloc+1] = z+dz

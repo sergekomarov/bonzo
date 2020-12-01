@@ -161,7 +161,7 @@ cdef class BnzIntegr:
     # reconstruction
     Reconstr reconstr
     ReconstrFunc reconstr_func
-    ints reconstr_order
+    int reconstr_order
 
     # limiter used for resonstruction
     # Limiter limiter
@@ -200,7 +200,7 @@ cdef class BnzIntegr:
 
 
   # Allocate space for integration arrays.
-  cdef void init_data(self, GridCoord*)
+  cdef void init(self, GridCoord*)
 
 
 

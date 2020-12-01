@@ -30,26 +30,26 @@ typedef double real;
 
 //===========================================================
 
-// number of variables in the Riemann problem
+// number of wave modes in the Riemann problem
 
 #if (!MFIELD && !TWOTEMP)
-#define NMODES 6
+#define NMODE 6
 #endif
 
 #if (!MFIELD && TWOTEMP)
-#define NMODES 7
+#define NMODE 7
 #endif
 
 #if (MFIELD && !CGL && !TWOTEMP)
-#define NMODES 9
+#define NMODE 9
 #endif
 
 #if (MFIELD && ((CGL && !TWOTEMP) || (!CGL && TWOTEMP)))
-#define NMODES 10
+#define NMODE 10
 #endif
 
 #if (MFIELD && CGL && TWOTEMP)
-#define NMODES 11
+#define NMODE 11
 #endif
 
 
@@ -72,28 +72,34 @@ enum {RHO=0, MX,MY,MZ, EN};
 // primitive variables
 enum {VX=1,VY,VZ, PR};
 
-#if !MFIELD
+#if MFIELD
 
-#define NVARS NMODES
-enum {PSC=NMODES-1};
+#if MHDPIC
+#define NFIELD NMODE+7
+#define NPRT_PROP 10
+#else
+#define NFIELD NMODE+3
+#endif
+
+enum {PSC=NMODE-4};
+enum {BX=NMODE-3, BY=NMODE-2, BZ=NMODE-1};
+// BC variable identifiers for cell- and face-centered magnetic field
+enum {BXC=BX, BYC=BY, BZC=BZ};
+enum {BXF=BZ+1, BYF=BZ+2, BZF=BZ+3};
+
+#else
+
+#define NFIELD NMODE
+enum {PSC=NMODE-1};
 // hack for boundary conditions to avoid setting BC for magnetic fields
 enum {BXC=990, BYC, BZC};
 enum {BXF=993, BYF, BZF};
 
-#else
-
-#define NVARS NMODES+3
-
-#if MHDPIC
-#define NPRT_PROP 10
 #endif
+// if MFIELD
 
-enum {PSC=NMODES-4};
-enum {BX=NMODES-3, BY=NMODES-2, BZ=NMODES-1};
-// indices used to set BC for cell- and face-centered magnetic fields
-enum {BXC=BX, BYC=BY, BZC=BZ};
-enum {BXF=BZ+1, BYF=BZ+2, BZF=BZ+3};
-#endif
+// BC variable identifier for particle feedback force
+enum {FC0=BZF+1, FCX=BZF+2, FCY=BZF+3, FCZ=BZF+4};
 
 #if CGL
 enum {LA=EN+1};

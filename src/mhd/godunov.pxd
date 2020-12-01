@@ -5,8 +5,8 @@ from bnz.coord.grid cimport *
 from bnz.mhd.integrator cimport *
 
 cdef void godunov_fluxes(real4d, real4d, real4d,
-                         real4d, real4d, ints*, GridCoord*,
-                         BnzIntegr, ints)
+                         real4d, real4d, GridCoord*, ints*,
+                         BnzIntegr, int)
 
 cdef void advance_hydro(real4d, real4d, real4d,real4d,real4d,
                         GridCoord*, ints*, real) nogil

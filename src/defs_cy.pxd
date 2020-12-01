@@ -51,19 +51,22 @@ cdef extern from "defs.h" nogil:
   real B_PI
 
 cdef extern from "defs.h" nogil:
-  int NVARS
+  int NFIELD
   enum: XAX,YAX,ZAX
 
 
 cdef extern from "defs.h" nogil:
 
-  int NMODES
+  int NMODE
 
   enum: RHO, MX,MY,MZ, EN
   enum: VX,VY,VZ, PR
   enum: PSC
+  
   enum: BXC,BYC,BZC
   enum: BXF,BYF,BZF
+  enum: FCX, FCY, FCZ
+
   enum: MU,NU,MUT,GAMT
 
 IF MFIELD:

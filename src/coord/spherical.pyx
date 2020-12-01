@@ -127,7 +127,7 @@ cdef inline real get_edge_len_y_(GridCoord *gc, ints i, ints j, ints k) nogil:
 
 cdef inline real get_edge_len_z_(GridCoord *gc, ints i, ints j, ints k) nogil:
 
-  return gc.lf[0][i] * gc.sin_thf[j] * dlf[2][k]
+  return gc.lf[0][i] * gc.sin_thf[j] * gc.dlf[2][k]
 
 # ----------------------------------------------------
 

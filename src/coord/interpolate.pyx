@@ -25,87 +25,79 @@ ELSE:
 cdef void set_interp_coeff(GridCoord *gc, int p):
 
   cdef:
-    ints *Ntot = gc.Ntot
-    ints *Nact = gc.Nact
-    ints *pos  = gc.pos
-    ints ng    = gc.ng
     real **lf  = gc.lf
     real ***cm = gc.cm
     real ***cp = gc.cp
 
-  cdef ints Ntot_max = maxi(maxi(Ntot[0],Ntot[1]),Ntot[2])
+  cdef ints Ntot_max = maxi(maxi(gc.Ntot[0],gc.Ntot[1]),gc.Ntot[2])
 
   cm = <real***>calloc_3d_array(3,p, Ntot_max, sizeof(real))
   # need both c+/c- if p is odd, i.e. interpolation polynomial is cell-centered
   # this is true for WENO
   cp = <real***>calloc_3d_array(3,p, Ntot_max, sizeof(real))
 
-  cdef ints imin_glob,imax_glob, jmin_glob,jmax_glob, ax
+  cdef ints imin_glob, jmin_glob, ax
 
   # X coordinate
 
-  imin_glob = pos[0]*Nact[0]-ng if pos[0]!=0 else 0
-  imax_glob = imin_glob + Ntot[0]
+  imin_glob = gc.pos[0]*gc.Nact[0]-gc.ng
   ax=0
 
-  if gc.coord_scale[0] == CS_UNI:
+  if gc.scale[0] == CS_UNI:
     # uniform
-    if gc.coord_geom   == CG_CAR:
-      set_flat_uni( cm[0],cp[0], Ntot[0], p)
-    elif gc.coord_geom == CG_CYL:
-      set_cyl_unir(cm[0],cp[0], imin_glob,imax_glob, ng, p)
-    elif gc.coord_geom == CG_SPH:
-      set_sph_unir(cm[0],cp[0], imin_glob,imax_glob, ng, p)
+    if gc.geom   == CG_CAR:
+      set_flat_uni(cm[0],cp[0], gc.Ntot[0], p)
+    elif gc.geom == CG_CYL:
+      set_cyl_unir(cm[0],cp[0], gc.Ntot[0], p, imin_glob)
+    elif gc.geom == CG_SPH:
+      set_sph_unir(cm[0],cp[0], gc.Ntot[0], p, imin_glob)
 
   else:
     # nonuniform
-    if gc.coord_geom == CG_CAR:
+    if gc.geom == CG_CAR:
       # flat
-      set_flat_nonuni(cm[0],cp[0], lf[0], Ntot[0], p)
+      set_flat_nonuni(cm[0],cp[0], lf[0], gc.Ntot[0], p)
     else:
       # curved
-      set_curv_nonuni(cm[0],cp[0], lf[0], ax, gc.coord_geom,
-                        imin_glob,imax_glob, p)
+      set_curv_nonuni(cm[0],cp[0], lf[0], gc.Ntot[0], p, imin_glob, ax, gc.geom)
 
   # Y coordinate
 
-  jmin_glob = pos[1]*Nact[1]-ng if pos[1]!=0 else 0
-  jmax_glob = jmin_glob + Ntot[1]
+  jmin_glob = gc.pos[1]*gc.Nact[1]-gc.ng
   ax=1
 
-  if gc.coord_scale[1] == CS_UNI and gc.coord_geom != CG_SPH:
+  if gc.scale[1] == CS_UNI and gc.geom != CG_SPH:
     # flat uniform
-    set_flat_uni(cm[1],cp[1], Ntot[1], p)
+    set_flat_uni(cm[1],cp[1], gc.Ntot[1], p)
   else:
-    if gc.coord_geom == CG_CAR or gc.coord_geom == CG_CYL:
+    if gc.geom == CG_CAR or gc.geom == CG_CYL:
       # flat nonuniform
-      set_flat_nonuni(cm[1],cp[1], lf[1], Ntot[1], p)
+      set_flat_nonuni(cm[1],cp[1], lf[1], gc.Ntot[1], p)
     else:
       # curved (only spherical meridional)
-      set_curv_nonuni(cm[1],cp[1], lf[1], ax, gc.coord_geom,
-                      jmin_glob,jmax_glob, p)
+      set_curv_nonuni(cm[1],cp[1], lf[1], gc.Ntot[1], p, jmin_glob, ax, gc.geom)
       # coefficients for uniform spherical meridional coordinate
       # are calculated via same method as for nonuniform coordinates
 
   # Z coordinate
 
   # always flat
-  if gc.coord_scale[2] == CS_UNI:
-    set_flat_uni(cm[2],cp[2], Ntot[2], p)
+  if gc.scale[2] == CS_UNI:
+    set_flat_uni(cm[2],cp[2], gc.Ntot[2], p)
   else:
-    set_flat_nonuni(cm[2],cp[2], lf[2], Ntot[2], p)
+    set_flat_nonuni(cm[2],cp[2], lf[2], gc.Ntot[2], p)
 
 
 
 
 # ========================================================================
 
-cdef void set_flat_uni(real **cm, real **cp, ints N, ints p):
+cdef void set_flat_uni(real **cm, real **cp, ints ntot, ints p):
 
   cdef ints i, n
 
   if p==3:
-    for i in range(N):
+    for i in range(ntot):
       # WENO
       cm[0][i] = -1./6
       cm[1][i] = 5./6
@@ -116,7 +108,7 @@ cdef void set_flat_uni(real **cm, real **cp, ints N, ints p):
       cp[2][i] = -1./6
 
   elif p==4:
-    for i in range(N):
+    for i in range(ntot):
       # PPM
       cm[0][i] = -1./12
       cm[1][i] = 7./12
@@ -124,25 +116,23 @@ cdef void set_flat_uni(real **cm, real **cp, ints N, ints p):
       cm[3][i] = -1./12
 
     for n in range(4):
-      for i in range(N-1):
+      for i in range(ntot-1):
         cp[n][i] = cm[n][i+1]
 
 
 # =============================================================================
 
-cdef void set_cyl_unir(real **cm, real **cp,
-                  ints imin_glob, ints imax_glob, ints ng, int p):
+cdef void set_cyl_unir(real **cm, real **cp, ints ntot, int p, ints imin_glob):
 
   cdef:
-    ints i, n, ir,nr
+    ints i, n
     double dinv, id
-    ints ng = (imax_glob-imin_glob)/2
 
   if p==3:
 
-    for i in range(imax_glob-imin_glob+1):
+    for i in range(ntot):
 
-      id = <double>(i+imin_glob-ng+1)
+      id = <double>(fabs(i+imin_glob+1))
 
       dinv = 1. / ( 12 * (id**2 - id - 1) * (2*id - 1) )
 
@@ -156,9 +146,9 @@ cdef void set_cyl_unir(real **cm, real **cp,
 
   if p==4:
 
-    for i in range(imax_glob-imin_glob+1):
+    for i in range(ntot):
 
-      id = <double>(i+imin_glob-ng+1)
+      id = <double>(fabs(i+imin_glob+1))
 
       dinv = 1. / ( 120*id**4 - 360*id**2 + 96 )
 
@@ -168,11 +158,13 @@ cdef void set_cyl_unir(real **cm, real **cp,
       cm[3][i] = -(2*id + 3) * ( 5*id**3 -  8*id**2  - 3*id  + 4) * dinv
 
     for n in range(p):
-      for i in range(imax_glob-imin_glob):
+      for i in range(ntot-1):
         cp[n][i] = cm[n][i+1]
 
   # reset interpolation coefficients in ghost cells r<0 by mirror symmetry
-  if imin_glob==0:
+  cdef ints ng, ir,nr
+  if imin_glob<0:
+    ng = -imin_glob
     for n in range(p):
       nr = p-n-1
       for i in range(ng):
@@ -184,18 +176,17 @@ cdef void set_cyl_unir(real **cm, real **cp,
 
 # ================================================================================
 
-cdef void set_sph_unir(real **cm, real **cp,
-                  ints imin_glob, ints imax_glob, ints ng, int p):
+cdef void set_sph_unir(real **cm, real **cp, ints ntot, int p, ints imin_glob):
 
   cdef:
-    ints i, n, nr,ir
+    ints i, n
     double dinv, id
 
   if p==3:
 
-    for i in range(imax_glob-imin_glob+1):
+    for i in range(ntot):
 
-      id = <double>(i+imin_glob-ng+1)
+      id = <double>(fabs(i+imin_glob+1))
 
       dinv = 1. / ( 18 * (10*id**6 - 30*id**5 + 15*id**4 + 20*id**3 - 9*id**2 - 6*id + 4) )
 
@@ -209,9 +200,9 @@ cdef void set_sph_unir(real **cm, real **cp,
 
   if p==4:
 
-    for i in range(imax_glob-imin_glob+1):
+    for i in range(ntot):
 
-      id = <double>(i+imin_glob-ng+1)
+      id = <double>(fabs(i+imin_glob+1))
 
       dinv = 1 ./ (36 * (15*id**8 - 85*id**6 + 150*id**4 - 60*id**2 + 16) )
 
@@ -221,11 +212,13 @@ cdef void set_sph_unir(real **cm, real **cp,
       cm[3][i] = -(3*id**2 + 9*id + 7) * ( 15*id**6 -  48*id**5 +  23*id**4 +  48*id**3 -  30*id**2 -   16*id + 12)  * dinv
 
     for n in range(p):
-      for i in range(imax_glob-imin_glob):
+      for i in range(ntot-1):
         cp[n][i] = cm[n][i+1]
 
   # reset interpolation coefficients in ghost cells r<0 by mirror symmetry
-  if imin_glob==0:
+  cdef ints ng, ir,nr
+  if imin_glob<0:
+    ng = -imin_glob
     for n in range(p):
       nr = p-n-1
       for i in range(ng):
@@ -241,15 +234,26 @@ cdef void set_sph_unir(real **cm, real **cp,
 # meridional coordinates.
 
 cdef void set_curv_nonuni(real **cm, real **cp, real *xi,
-                          ints ax, CoordGeom geom,
-                          ints imin_glob, ints imax_glob, ints ng, int p):
+                          ints ntot, int p, ints imin_glob,
+                          ints ax, CoordGeom geom):
 
 
   cdef:
-    ints i,n,s, ir, nr
-    ints is_radial=1, m=1
+    ints i,n,s
     double a, cosm,cosp
 
+  cdef:
+    ints iL = p/2
+    ints iR = p-iL-1
+
+  cdef:
+    np.ndarray[double,ndim=2] betat = np.zeros((p,p), dtype=np.float64)
+    np.ndarray[double,ndim=1] dm = np.zeros(p, dtype=np.float64)
+    np.ndarray[double,ndim=1] dp = np.zeros(p, dtype=np.float64)
+    np.ndarray[double,ndim=1] cmi = np.zeros(p, dtype=np.float64)
+    np.ndarray[double,ndim=1] cpi = np.zeros(p, dtype=np.float64)
+
+  cdef ints is_radial=1, m=1
   if ax==0:
     # radial cylindrical or spherical
     if geom==CG_CYL: m=1
@@ -259,20 +263,7 @@ cdef void set_curv_nonuni(real **cm, real **cp, real *xi,
     # spherical meridional
     is_radial=0
 
-  cdef:
-    ints iL = p/2
-    ints iR = p-iL-1
-
-  cdef:
-    np.ndarray[real,ndim=2] betat = np.zeros((p,p), dtype=np.float64)
-    np.ndarray[real,ndim=1] dm = np.zeros(p, dtype=np.float64)
-    np.ndarray[real,ndim=1] dp = np.zeros(p, dtype=np.float64)
-    np.ndarray[real,ndim=1] cmi = np.zeros(p, dtype=np.float64)
-    np.ndarray[real,ndim=1] cpi = np.zeros(p, dtype=np.float64)
-
-  # check if the bottom boundary is r=0 and exclude ghost cells where r<0
-
-  for i in range(iL, imax_glob-imin_glob-iR):
+  for i in range(iL, ntot-iR):
 
     for n in range(p):
 
@@ -317,7 +308,9 @@ cdef void set_curv_nonuni(real **cm, real **cp, real *xi,
 
 
   # reset interpolation coefficients in ghost cells r<0 by mirror symmetry
-  if imin_glob==0:
+  cdef ints ng, ir,nr
+  if imin_glob<0:
+    ng = -imin_glob
     for n in range(p):
       nr = p-n-1
       for i in range(ng):
@@ -326,10 +319,9 @@ cdef void set_curv_nonuni(real **cm, real **cp, real *xi,
         cp[n][i] = cm[nr][ir]
 
 
-# ===================================================================
+# ==========================================================================
 
-cdef void set_flat_nonuni(real **cm, real **cp,
-                         real *xi, ints N, int p):
+cdef void set_flat_nonuni(real **cm, real **cp, real *xi, ints ntot, int p):
 
   cdef:
     ints i
@@ -339,7 +331,7 @@ cdef void set_flat_nonuni(real **cm, real **cp,
 
   if p==4:
 
-    for i in range(2,N-1):
+    for i in range(2,ntot-1):
 
       dm2 = xi[i-1] - xi[i-2]
       dm1 = xi[i]   - xi[i-1]

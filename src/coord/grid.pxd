@@ -23,7 +23,7 @@ cdef extern from "coord.h" nogil:
     ints Ntot[3]        # numbers of cells including ghosts
     ints Nact_glob[3]   # active cells in full domain
     ints Ntot_glob[3]   # all cells in full domain
-    int ng              # number of ghost cells
+    ints ng              # number of ghost cells
     ints i1,i2          # min and max indices of active cells on local grid
     ints j1,j2
     ints k1,k2
@@ -42,8 +42,8 @@ cdef extern from "coord.h" nogil:
     real **dlf_inv
     real **dlv_inv      # inverse spacings
 
-    CoorgGeom coord_geom       # coordinate geometry
-    CoordScale coord_scale[3]  # scale of the coordinate axes
+    CoorgGeom geom       # coordinate geometry
+    CoordScale scale[3]  # scale of the coordinate axes
 
     # auxilary coefficients to calculate cell volumes, areas, and lengths
     real *rinv_mean
@@ -66,18 +66,14 @@ cdef extern from "coord.h" nogil:
     real **cp
 
     # MPI block IDs
-    ints rank             # MPI rank of the grid
-    ints pos[3]           # 3D index of the grid on the current processor
+    ints rank            # MPI rank of the grid
+    ints pos[3]          # 3D index of the grid on the current processor
+    ints size[3]         # number of MPI blocks (grids) in x,y,z directions
+    ints size_tot        # total number of blocks
 
-    IF MPI:
-
-      ints size[3]         # number of MPI blocks (grids) in x,y,z directions
-      ints size_tot        # total number of blocks
-
-      ints ***ranks        # 3D array of grid ranks
-
-      ints nbr_ranks[3][2] # ranks of neighboring grids
-      # nbr_ids[axis,L(0)/R(1)]
+    ints ***ranks        # 3D array of grid ranks
+    ints nbr_ranks[3][2] # ranks of neighboring grids
+    # nbr_ids[axis,L(0)/R(1)]
 
 
 
@@ -104,12 +100,11 @@ cdef class GridData:
     # real4d bf_s         # predictor-step arrays of face-centered magnetic field
     # real4d bf_ss
 
-    real4d bf_init      # initial magnetic field
+    real4d bf_init        # initial magnetic field
     # real3d phi          # static gravitational potential
     # real4d fdriv        # driving force
     # real3d nuii_eff     # effective ion collision rate
 
-  IF MHDPIC:
     cdef real4d fcoup     # particle feedback array
 
 
@@ -150,15 +145,13 @@ cdef class GridScratch:
     real3d Fx_diff1, Fy_diff1, Fz_diff1
     real3d Fx_diff2, Fy_diff2, Fz_diff2
 
-  IF MHDPIC:
-    cdef real4d fcoup_tmp   # temporary copy of the particle feedback array
+  # cdef real4d fcoup_tmp   # temporary copy of the particle feedback array
 
 
 
 # =========================================================================
 
-cdef class BnzSim
-cdef class GridBC
+cdef class GridBc
 
 # Grid class, contains parameters and data of local grid.
 
@@ -168,15 +161,10 @@ cdef class BnzGrid:
     GridCoord coord      # grid coordinates
     GridData data        # grid data
     GridScratch scratch  # scratch arrays
-    GridBC bc            # boundary conditions
+    GridBc bc            # boundary conditions
 
-  IF MHDPIC:
-    cdef BnzParticles prts
+  cdef BnzParticles prts # particles
 
   cdef bytes usr_dir     # user directory, contains config file
 
-  cdef:
-    void init(self)
-    void init_data(self)
-  IF MPI:
-    cdef void domain_decomp(self)
+  cdef void init(self)

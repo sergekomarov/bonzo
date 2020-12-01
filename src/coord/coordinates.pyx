@@ -45,7 +45,7 @@ cdef void set_spacings(BnzGrid grid):
 
   cdef:
     GridCoord *gc = &(grid.coord)
-    GridBC gbc = grid.bc
+    GridBc gbc = grid.bc
 
   cdef:
 
@@ -59,80 +59,34 @@ cdef void set_spacings(BnzGrid grid):
     real *lmin = gc.lmin
     real *lmax = gc.lmax
 
-  # # Set coordinate geometry and default coordinate limits.
-  #
-  # geom = read_param("computation","geometry",'s',usr_dir)
-  #
-  # if geom=='car':
-  #   gc.coord_geom=CG_CAR
-  #   lmin[0], lmax[0] = 0.,1.
-  #   lmin[1], lmax[1] = 0.,1.
-  #   lmin[2], lmax[2] = 0.,1.
-  # elif geom=='cyl':
-  #   gc.coord_geom==CG_CYL
-  #   lmin[0], lmax[0] = 0., 1.
-  #   lmin[1], lmax[1] = 0., 2*B_PI
-  #   lmin[2], lmax[2] = 0., 1.
-  # elif geom=='sph':
-  #   gc.coord_geom=CG_SPH
-  #   lmin[0], lmax[0] = 0., 1.
-  #   lmin[1], lmax[1] = 0., B_PI
-  #   lmin[2], lmax[2] = 0., 2*B_PI
-  #
-  # # Set global coordinate limits.
-  #
-  # lmin[0] = read_param("computation","xmin",'f',usr_dir)
-  # lmax[0] = read_param("computation","xmax",'f',usr_dir)
-  #
-  # IF D2D:
-  #   lmin[1] = read_param("computation","ymin",'f',usr_dir)
-  #   lmax[1] = read_param("computation","ymax",'f',usr_dir)
-  #
-  # IF D3D:
-  #   lmin[2] = read_param("computation","zmin",'f',usr_dir)
-  #   lmax[2] = read_param("computation","zmax",'f',usr_dir)
-  #
-  # # Correct boundaries as appropriate for cylindrical or spherical coordinates.
-  #
-  # if gc.coord_geom==CG_CYL or gc.coord_geom==CG_SPH:
-  #   for n in range(3):
-  #     if lmin[n]<0.: lmin[n]=0.
-  #
-  # if gc.coord_geom==CG_CYL:
-  #   if lmax[1]>=2*B_PI-1e-2: lmax[1] = 2*B_PI
-  #
-  # if gc.coord_geom==CG_SPH:
-  #   if lmax[1]>=B_PI-1e-2: lmax[1] = B_PI
-  #   if lmax[2]>=2*B_PI-1e-2: lmax[2] = 2*B_PI
-
 
   # Set the scale of coordinate axes.
 
   x_scale = read_param("computation","x_scale",'s',usr_dir)
   if x_scale=='uni':
-    gc.coord_scale[0] = CS_UNI
+    gc.scale[0] = CS_UNI
   elif x_scale=='log':
-    gc.coord_scale[0] = CS_LOG
+    gc.scale[0] = CS_LOG
   elif x_scale=='usr':
-    gc.coord_scale[0] = CS_USR
+    gc.scale[0] = CS_USR
 
   IF D2D:
     y_scale = read_param("computation","y_scale",'s',usr_dir)
     if y_scale=='uni':
-      gc.coord_scale[1] = CS_UNI
+      gc.scale[1] = CS_UNI
     elif y_scale=='log':
-      gc.coord_scale[1] = CS_LOG
+      gc.scale[1] = CS_LOG
     elif y_scale=='usr':
-      gc.coord_scale[1] = CS_USR
+      gc.scale[1] = CS_USR
 
   IF D3D:
     z_scale =  read_param("computation","z_scale",'s',usr_dir)
     if z_scale=='uni':
-      gc.coord_scale[2] = CS_UNI
+      gc.scale[2] = CS_UNI
     elif z_scale=='log':
-      gc.coord_scale[2] = CS_LOG
+      gc.scale[2] = CS_LOG
     elif z_scale=='usr':
-      gc.coord_scale[2] = CS_USR
+      gc.scale[2] = CS_USR
 
   # -------------------------------------------------------------
 
@@ -154,11 +108,11 @@ cdef void set_spacings(BnzGrid grid):
 
   # Set user cell spacings.
 
-  if gc.coord_scale[0]==CS_USR:
+  if gc.scale[0]==CS_USR:
     set_user_coord_x(gc)
-  if gc.coord_scale[1]==CS_USR:
+  if gc.scale[1]==CS_USR:
     set_user_coord_y(gc)
-  if gc.coord_scale[2]==CS_USR:
+  if gc.scale[2]==CS_USR:
     set_user_coord_z(gc)
 
   cdef:
@@ -186,7 +140,7 @@ cdef void set_spacings(BnzGrid grid):
 
     # Uniform axis.
 
-    if gc.coord_scale[n]==CS_UNI:
+    if gc.scale[n]==CS_UNI:
 
       dx = (lmax[n] - lmin[n]) / Nact_glob[n]
       l1 = pos[n] * Nact[n] * dx
@@ -197,7 +151,7 @@ cdef void set_spacings(BnzGrid grid):
 
     # Logarithmic axis.
 
-    elif gc.coord_scale[n]==CS_LOG:
+    elif gc.scale[n]==CS_LOG:
 
       if gbc.bc_flags[n][0]==0 or gbc.bc_flags[n][1]==0:
         sys.exit('periodic BC in {}-direction cannot be used with logarithmic cell spacing'.format(n))
@@ -290,7 +244,7 @@ cdef void add_geom_src_terms(GridCoord *gc, real4d w, real4d u,
     real mpp, mtt, mtp, rp2,rm2, rp,rm
     real b2h, by2,bz2,bybz, a
 
-  if gc.coord_geom==CG_CYL:
+  if gc.geom==CG_CYL:
 
     for k in range(lims[4], lims[5]+1):
       for j in range(lims[2], lims[3]+1):
@@ -320,7 +274,7 @@ cdef void add_geom_src_terms(GridCoord *gc, real4d w, real4d u,
           # this expression is exact (-> exact conservation of angular momentum):
           u[MY,k,j,i] -= dt * gc.src_coeff1[i] * (rp * fx[MY,k,j,i+1] + rm * fx[MY,k,j,i])
 
-  elif gc.coord_geom==CG_SPH:
+  elif gc.geom==CG_SPH:
 
     for k in range(lims[4], lims[5]+1):
       for j in range(lims[2], lims[3]+1):
@@ -370,7 +324,7 @@ cdef void add_laplacian(GridCoord *gc, real4d a, int sgn) nogil:
 
   cdef ints i,j,k, n
 
-  # for n in range(NMODES):
+  # for n in range(NMODE):
   #   for k in range(gc.Ntot[2]):
   #     for j in range(gc.Ntot[1]):
   #       for i in range(gc.Ntot[0]):
@@ -393,7 +347,7 @@ cdef void add_laplacian(GridCoord *gc, real4d a, int sgn) nogil:
 
   cdef real am1,a0,ap1,ap2
 
-  for n in range(NMODES):
+  for n in range(NMODE):
 
     for k in range(Nz):
       for j in range(Ny):

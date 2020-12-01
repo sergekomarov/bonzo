@@ -21,8 +21,8 @@ from bnz.coord.coordinates cimport get_face_area_y, get_face_area_z
 # Calculate Godunov fluxes from conserved variables.
 
 cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
-                         real4d prim, real4d bf, ints *lims, GridCoord *gc,
-                         BnzIntegr integr, ints order):
+                         real4d prim, real4d bf, GridCoord *gc, ints *lims,
+                         BnzIntegr integr, int order):
 
   cdef:
     ints i,j,k,n,d, n1,d1
@@ -59,20 +59,22 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
   cdef ReconstrFunc reconstr_func = get_reconstr_func(order, integr)
 
   cdef:
-    int thread_id = threadid()
+    int thread_id
     int nt = OMP_NT
   IF not D2D and not D3D: nt = 1  # don't use OpenMP in 1D
 
 
   with nogil, parallel(num_threads=nt):
 
+    thread_id = threadid()
+
     wl  = integr.scratch.wl[thread_id]
     wl_ = integr.scratch.wl_[thread_id]
     wr  = integr.scratch.wr[thread_id]
     rcn_scr = integr.scratch.w_rcn[thread_id]
 
-    prim1 = <real ***>calloc_2d_array(2*order+1, NMODES, sizeof(real*))
-    flux1 = <real **>calloc(NMODES, sizeof(real*))
+    prim1 = <real ***>calloc_2d_array(2*order+1, NMODE, sizeof(real*))
+    flux1 = <real **>calloc(NMODE, sizeof(real*))
     bf1 = NULL
 
     # print_root(rank, "\nGodunov fluxes along X... ")
@@ -95,7 +97,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
         # shallow slice of the array of primitive variables
         # 'order' sets the size of the interpolation stencil = 2*order+1
         for d in range(2*order+1):
-          for n in range(NMODES):
+          for n in range(NMODE):
             prim1[d][n] = &prim[varsx[n],k,j,0] + d-order
 
         # reconstruction sets wl[i+1], wr[i] => need to start from il-1
@@ -104,7 +106,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
                       integr.charact_proj, integr.gam)
 
         # shallow slice of x-flux array
-        for n in range(NMODES): flux1[n] = &flux_x[varsx[n],k,j,0]
+        for n in range(NMODE): flux1[n] = &flux_x[varsx[n],k,j,0]
 
         # calulate Godunov x-flux
         IF MFIELD: bf1 = &(bf[0,k,j,0])
@@ -134,7 +136,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
         # sets wl[j+1], wr[j] => need to calculate jl-1 first
 
         for d in range(2*order+1):
-          for n in range(NMODES):
+          for n in range(NMODE):
             prim1[d][n] = &prim[varsy[n], k, jl-1 + d-order, 0]
 
         reconstr_func(wl, wr, prim1, rcn_scr, gc,
@@ -144,14 +146,14 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
         for j in range(jl,ju+2):
 
           for d in range(2*order+1):
-            for n in range(NMODES):
+            for n in range(NMODE):
               prim1[d][n] = &prim[varsy[n], k, j+d-order, 0]
 
           reconstr_func(wl_, wr, prim1, rcn_scr,
                         YAX, ib,ie, j,k,
                         integr.charact_proj, integr.gam)
 
-          for n in range(NMODES): flux1[n] = &flux_y[varsy[n],k,j,0]
+          for n in range(NMODE): flux1[n] = &flux_y[varsy[n],k,j,0]
 
           IF MFIELD: bf1 = &(bf[1,k,j,0])
           integr.rsolver_func(flux1, wl,wr, bf1, ib,ie, integr.gam)
@@ -178,7 +180,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
       for j in prange(jb,je+1, schedule='dynamic'):
 
         for d in range(2*order+1):
-          for n in range(NMODES):
+          for n in range(NMODE):
             prim1[d][n] = &prim[varsz[n], kl-1 + d-order, j, 0]
 
         reconstr_func(wl, wr, prim1, rcn_scr, gc,
@@ -188,14 +190,14 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
         for k in range(kl,ku+2):
 
           for d in range(2*order+1):
-            for n in range(NMODES):
+            for n in range(NMODE):
               prim1[d][n] = &prim[varsz[n], k+d-order, j, 0]
 
           reconstr_func(wl_,wr, prim1, rcn_scr, gc,
                         ZAX, ib,ie, j,k,
                         integr.charact_proj, integr.gam)
 
-          for n in range(NMODES): flux1[n] = &flux_z[varsz[n],k,j,0]
+          for n in range(NMODE): flux1[n] = &flux_z[varsz[n],k,j,0]
 
           IF MFIELD: bf1 = &(bf[2,k,j,0])
           integr.rsolver_func(flux1, wl,wr, bf1, ib,ie, integr.gam)
@@ -222,8 +224,8 @@ cdef void advance_hydro(real4d u1, real4d u0, real4d fx, real4d fy, real4d fz,
     real dtdv, dam,dap
 
   cdef ints Nvar_hydro
-  IF MFIELD: Nvar_hydro = NMODES-3
-  ELSE: Nvar_hydro = NMODES
+  IF MFIELD: Nvar_hydro = NMODE-3
+  ELSE: Nvar_hydro = NMODE
 
   for n in range(Nvar_hydro):
     for k in range(lims[4],lims[5]+1):
@@ -300,10 +302,10 @@ cdef ints1d swap_mhd_vec(ints ax):
   cdef:
     ints n
     ints Nvar_hydro
-    ints[::1] vars=np.zeros(NMODES,np.intp)
+    ints[::1] vars=np.zeros(NMODE,np.intp)
 
-  IF MFIELD: Nvar_hydro = NMODES-3
-  ELSE: Nvar_hydro = NMODES
+  IF MFIELD: Nvar_hydro = NMODE-3
+  ELSE: Nvar_hydro = NMODE
 
 
   vars[RHO] = RHO
@@ -327,7 +329,7 @@ cdef ints1d swap_mhd_vec(ints ax):
 
 # ==============================================================================
 
-cdef ReconstrFunc get_reconstr_func(ints order, BnzInteg integr) nogil:
+cdef ReconstrFunc get_reconstr_func(int order, BnzInteg integr) nogil:
 
   if order==0:
     return reconstr_const

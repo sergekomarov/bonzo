@@ -7,13 +7,13 @@
 
 void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
-  real w[NMODES];
-  real u[NMODES];
+  real w[NMODE];
+  real u[NMODE];
 
 #pragma omp simd private(u, w)
   for (ints i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODES; ++n)
+    for (ints n=0; n<NMODE; ++n)
       u[n] = U1[n][i];
 
     //-----------------------
@@ -53,7 +53,7 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
     //-----------------------
 
-    for (ints n=0; n<NMODES; ++n)
+    for (ints n=0; n<NMODE; ++n)
       W1[n][i] = w[n];
 
   }
@@ -65,14 +65,14 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
 void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
-  real w[NMODES];
-  real u[NMODES];
+  real w[NMODE];
+  real u[NMODE];
   real gamm1i = 1./(gam-1.);
 
 #pragma omp simd private(u, w)
   for (ints i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODES; ++n)
+    for (ints n=0; n<NMODE; ++n)
       w[n] = W1[n][i];
 
     //-----------------------
@@ -109,7 +109,7 @@ void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
     //-----------------------
 
-    for (ints n=0; n<NMODES; ++n)
+    for (ints n=0; n<NMODE; ++n)
       U1[n][i] = u[n];
 
   }

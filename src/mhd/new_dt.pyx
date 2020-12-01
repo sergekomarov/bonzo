@@ -47,7 +47,7 @@ cdef double new_dt(real4d w, GridCoord *gc, BnzIntegr integr):
   with nogil, parallel(num_threads=OMP_NT):
 
     id = threadid()
-    _w = <real*>calloc(NMODES, sizeof(real))
+    _w = <real*>calloc(NMODE, sizeof(real))
 
     for k in prange(gc.k1, gc.k2+1, schedule='dynamic'):
 
@@ -57,7 +57,7 @@ cdef double new_dt(real4d w, GridCoord *gc, BnzIntegr integr):
       for j in range(gc.j1, gc.j2+1):
         for i in range(gc.i1, gc.i2+1):
 
-          for n in range(NMODES):
+          for n in range(NMODE):
             _w[n] = w[n,k,j,i]
 
           # if W[PR,k,j,i]<0:

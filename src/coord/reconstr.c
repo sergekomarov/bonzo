@@ -15,7 +15,7 @@ void reconstr_const(real **wl, real **wr, real ***w, real ***scr,
 
   ints ip = (ax==0) ? 1 : 0;
 
-  for (ints n=0; n<NMODES; ++n)
+  for (ints n=0; n<NMODE; ++n)
 #pragma omp simd simdlen(SIMD_WIDTH)
     for (ints i=i1; i<=i2; ++i) {
       wr[n][i]    = w[0][n][i];
@@ -44,17 +44,17 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
   real *dxiv = gc.dlv[ax];
   real *dxiv_inv = gc.dlv_inv[ax];
 
-  int is_flat_uni = ( (gc.coord_space[ax]==CS_UNI) &&
-                     ((gc.coord_geom[ax]==CG_CAR) ||
-                      (gc.coord_geom[ax]==CG_CYL && ax>0) ||
-                      (gc.coord_geom[ax]==CG_SPH && ax==2)) );
+  int is_flat_uni = ( (gc.scale[ax]==CS_UNI) &&
+                     ((gc.geom[ax]==CG_CAR) ||
+                      (gc.geom[ax]==CG_CYL && ax>0) ||
+                      (gc.geom[ax]==CG_SPH && ax==2)) );
 
   ints ip = (ax==0) ? 1 : 0;
   ints jk=0;
   if (ax==1) jk=j;
   else if (ax==2) jk=k;
 
-  for (ints n=0; n<NMODES; n++) {
+  for (ints n=0; n<NMODE; n++) {
 #pragma omp simd
     for (ints i=i1; i<=i2; i++) {
       wc[n][i] = w[1][n][i];
@@ -72,7 +72,7 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
 
   if (is_flat_uni) {
 
-    for (ints n=0; n<NMODES; n++)
+    for (ints n=0; n<NMODE; n++)
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (ints i=i1; i<=i2; i++)
         d[n][i] = 0.5*vl_lim(dm[n][i], dp[n][i]);
@@ -80,7 +80,7 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
     if (char_proj)
       char2prim_1(d, wc, i1,i2, gam);
 
-    for (ints n=0; n<NMODES; n++) {
+    for (ints n=0; n<NMODE; n++) {
 #pragma omp simd
       for (ints i=i1; i<=i2; i++) {
 
@@ -99,7 +99,7 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
 
     if (ax==0) {
 
-      for (ints n=0; n<NMODES; n++) {
+      for (ints n=0; n<NMODE; n++) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; i++) {
 
@@ -130,7 +130,7 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
       if (char_proj)
         char2prim_1(d, wc, i1,i2, gam);
 
-      for (ints n=0; n<NMODES; n++) {
+      for (ints n=0; n<NMODE; n++) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; i++) {
           wr[n][i]   = wc[n][i] - d[n][i] * (xiv[i]   - xif[i]);
@@ -147,7 +147,7 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
       real fm = dxiv[jk  ] / (xiv[jk]   - xif[jk]);
       real fp = dxiv[jk+1] / (xif[jk+1] - xiv[jk]);
 
-      for (ints n=0; n<NMODES; n++) {
+      for (ints n=0; n<NMODE; n++) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; i++) {
 
@@ -170,7 +170,7 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
       real dximh = xiv[jk]   - xif[jk];
       real dxiph = xif[jk+1] - xiv[jk];
 
-      for (ints n=0; n<NMODES; n++) {
+      for (ints n=0; n<NMODE; n++) {
 #pragma omp simd
         for (ints i=i1; i<=i2; i++) {
           wr[n][i] = wc[n][i] - d[n][i] * dximh;
@@ -195,10 +195,10 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
                      ints i1, ints i2, ints j, ints k,
                      int char_proj, real gam) {
 
-  int is_flat_uni = ( (gc.coord_space[ax]==CS_UNI) &&
-                     ((gc.coord_geom[ax]==CG_CAR) ||
-                      (gc.coord_geom[ax]==CG_CYL && ax>0) ||
-                      (gc.coord_geom[ax]==CG_SPH && ax==2)) );
+  int is_flat_uni = ( (gc.scale[ax]==CS_UNI) &&
+                     ((gc.geom[ax]==CG_CAR) ||
+                      (gc.geom[ax]==CG_CYL && ax>0) ||
+                      (gc.geom[ax]==CG_SPH && ax==2)) );
 
   ints ip = (ax==0) ? 1 : 0;
   ints jk=0;
@@ -220,7 +220,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
   else Cref = 20. / (gc.lmax[ax]-gc.lmin[ax]);
 
 
-  for (ints n=0; n<NMODES; ++n) {
+  for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd
     for (ints i=i1; i<=i2; ++i) {
       wc[n][i] = w[1][n][i];
@@ -238,7 +238,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
 
   if (is_flat_uni) {
 
-    for (ints n=0; n<NMODES; ++n) {
+    for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (ints i=i1; i<=i2; ++i) {
 
@@ -262,7 +262,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
       char2prim_1(dp, wc, i1,i2, gam);
     }
 
-    for (ints n=0; n<NMODES; ++n) {
+    for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd
       for (ints i=i1; i<=i2; ++i) {
         wr[n][i]    = wc[n][i] - dm[n][i];
@@ -278,7 +278,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
 
     if (ax==0) {
 
-      for (ints n=0; n<NMODES; ++n) {
+      for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
@@ -308,7 +308,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
         char2prim_1(dp, wc, i1,i2, gam);
       }
 
-      for (ints n=0; n<NMODES; ++n) {
+      for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd
         for (ints i=i1; i<=i2; ++i) {
           wr[n][i]   = wc[n][i] - dm[n][i] * (xiv[i]   - xif[i]);
@@ -322,7 +322,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
 
     else {
 
-      for (ints n=0; n<NMODES; ++n) {
+      for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
@@ -355,7 +355,7 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
       real dximh = xiv[jk]   - xif[jk];
       real dxiph = xif[jk+1] - xiv[jk];
 
-      for (ints n=0; n<NMODES; ++n) {
+      for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd
         for (ints i=i1; i<=i2; ++i) {
           wr[n][i] = wc[n][i] - dm[n][i] * dximh;
@@ -391,10 +391,10 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
   real one12th = 1./12;
   real C=1.25;
 
-  int is_flat_uni = ( (gc.coord_space[ax]==CS_UNI) &&
-                     ((gc.coord_geom[ax]==CG_CAR) ||
-                      (gc.coord_geom[ax]==CG_CYL && ax>0) ||
-                      (gc.coord_geom[ax]==CG_SPH && ax==2)) );
+  int is_flat_uni = ( (gc.scale[ax]==CS_UNI) &&
+                     ((gc.geom[ax]==CG_CAR) ||
+                      (gc.geom[ax]==CG_CYL && ax>0) ||
+                      (gc.geom[ax]==CG_SPH && ax==2)) );
 
   ints ip = (ax==0) ? 1 : 0;
   ints jk=0;
@@ -418,7 +418,7 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
   real **_wr_tmp = scr[3];
 
 
-  for (ints n=0; n<NMODES; ++n) {
+  for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd
     for (ints i=i1; i<=i2; ++i) {
       _wm2[n][i] = _w[0][n][i];
@@ -442,7 +442,7 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
 
   if (is_flat_uni) {
 
-    for (ints n=0; n<NMODES; ++n) {
+    for (ints n=0; n<NMODE; ++n) {
 
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (ints i=i1; i<=i2; ++i) {
@@ -535,7 +535,7 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
 
     if (ax==0) {
 
-      for (ints n=0; n<NMODES; ++n) {
+      for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
@@ -620,7 +620,7 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
 
     else {
 
-      for (ints n=0; n<NMODES; ++n) {
+      for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd simdlen(SIMD_WIDTH)
         for (ints i=i1; i<=i2; ++i) {
 
@@ -678,7 +678,7 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
     char2prim_1(_wr_tmp, _wc0, i1,i2, gam);
   }
 
-  for (ints n=0; n<NMODES; ++n) {
+  for (ints n=0; n<NMODE; ++n) {
 #pragma omp simd
     for (ints i=i1; i<=i2; ++i) {
       _wr[n][i]    = _wr_tmp[n][i];

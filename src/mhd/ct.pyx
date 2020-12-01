@@ -12,6 +12,7 @@ from bnz.utils cimport print_root, timediff
 
 from bnz.coord.coordinates cimport get_face_area_x, get_face_area_y, get_face_area_z
 from bnz.coord.coordinates cimport get_edge_len_x, get_edge_len_y, get_edge_len_z
+from bnz.coord.coordinates cimport get_centr_len_x, get_centr_len_y, get_centr_len_z
 
 
 #============================================================================
@@ -24,7 +25,6 @@ cdef void advance_b_field(real4d b1, real4d b0, real4d ee,
   cdef:
     ints i,j,k, ip1,jp1,kp1
     real dtda, dsp,dsm
-
 
   for k in range(lims[4],lims[5]+1):
     for j in range(lims[2],lims[3]+1):
@@ -50,7 +50,15 @@ cdef void advance_b_field(real4d b1, real4d b0, real4d ee,
 
 
   for k in range(lims[4],lims[5]+1):
-    for j in range(lims[2],lims[3]+2):
+    for j in range(lims[2],lims[3]+1):
+
+      # exclude poles theta=0, theta=pi
+      if gc.geom==CG_SPH:
+        if gc.lf[1][j]==0.:
+          continue
+        if gc.lf[1][j]==B_PI:
+          continue
+
       for i in range(lims[0],lims[1]+1):
 
         dtda = dt / get_face_area_y(gc,i,j,k)
@@ -80,10 +88,10 @@ cdef void advance_b_field(real4d b1, real4d b0, real4d ee,
 
         IF D2D:
 
-        dsm = get_edge_len_x(gc,i,j, k)
-        dsp = get_edge_len_x(gc,i,j+1,k)
+          dsm = get_edge_len_x(gc,i,j, k)
+          dsp = get_edge_len_x(gc,i,j+1,k)
 
-          b1[2,k,j,i] += dtda * (dsp * ee[0,k,j+1,i] - dsm * ee[0,k,j,i])
+            b1[2,k,j,i] += dtda * (dsp * ee[0,k,j+1,i] - dsm * ee[0,k,j,i])
 
 
   # IF D3D and D2D:
@@ -210,7 +218,7 @@ cdef void interp_b_field(real4d u, real4d b, GridCoord *gc, ints *lims) nogil:
 
 # Calculate electric field at cell centers from primitive variables.
 
-cdef void e_field_cntr(real4d ec, real4d w, ints *lims) nogil:
+cdef void ec_from_prim(real4d ec, real4d w, ints *lims) nogil:
 
   cdef:
     ints i,j,k
@@ -236,8 +244,8 @@ cdef void e_field_cntr(real4d ec, real4d w, ints *lims) nogil:
 # Interpolate electric field from cell centers to edge centers
 # using cell-centered e.f. and face-centered Godunov fluxes.
 
-cdef void interp_e_field_1(real4d ee, real4d ec,
-                  real4d fx, real4d fy, real4d fz, ints *lims) nogil:
+cdef void interp_ee1(real4d ee, real4d ec,
+                     real4d fx, real4d fy, real4d fz, ints *lims) nogil:
 
   cdef:
     ints k,j,i
@@ -308,9 +316,9 @@ cdef inline real get_ct_weight(real frho, real rho_l, real rho_r,
   return 0.5 + fmax(-0.5, fmin(0.5, v_c))
 
 
-cdef void interp_e_field_2(real4d ee, real4d ec,
-                      real4d fx, real4d fy, real4d fz, ints *lims,
-                      real3d rho, real dt) nogil:
+cdef void interp_ee2(real4d ee, real4d ec,
+                     real4d fx, real4d fy, real4d fz, ints *lims,
+                     real3d rho, real dt) nogil:
 
   cdef:
     ints k,j,i

@@ -175,7 +175,7 @@ void inline sLsR_pressure(real *sL, real *sR,
 // HLL(E) flux.
 
 void hll_flux(real **_flux, real **_wL, real **_wR, real *_bx,
-             ints i1, ints i2, real gam)
+             int i1, int i2, real gam)
 {
 
   real uL[NMODE];
@@ -186,9 +186,9 @@ void hll_flux(real **_flux, real **_wL, real **_wR, real *_bx,
   real fR[NMODE];
 
 #pragma omp simd simdlen(SIMD_WIDTH) private(uL,uR,wL,wR,fL,fR)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODE; ++n) {
+    for (int n=0; n<NMODE; ++n) {
       wL[n] = _wL[n][i];
       wR[n] = _wR[n][i];
     }
@@ -214,7 +214,7 @@ void hll_flux(real **_flux, real **_wL, real **_wR, real *_bx,
     real aRmaLi = 1./(aR-aL);
 
     // calculate HLL flux
-    for (ints n=0; n<NMODE; ++n)
+    for (int n=0; n<NMODE; ++n)
       _flux[n][i] = (aR * fL[n] - aL * fR[n] + aLaR * (uR[n] - uL[n])) * aRmaLi;
 
 #if MFIELD
@@ -232,7 +232,7 @@ void hll_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 #if !MFIELD
 
 void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
-              ints i1, ints i2, real gam)
+              int i1, int i2, real gam)
 {
 
   real wL[NMODE];
@@ -247,9 +247,9 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
   // real d[NMODE];
 
 #pragma omp simd simdlen(SIMD_WIDTH) private(uL,uR, wL,wR, fL,fR)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODE; ++n) {
+    for (int n=0; n<NMODE; ++n) {
       wL[n] = _wL[n][i];
       wR[n] = _wR[n][i];
     }
@@ -287,7 +287,7 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
     // calculate F_K-U_K*S_K from Toro' book
 
-    for (ints n=0; n<NMODE; ++n) {
+    for (int n=0; n<NMODE; ++n) {
       fL[n] = uL[n] * vLsL;
       fR[n] = uR[n] * vRsR;
       // d[n] = 0.;
@@ -318,7 +318,7 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
     // d[EN] = d[MX]*sM;
 
-    for (ints n=0; n<NMODE; n++)
+    for (int n=0; n<NMODE; n++)
       _flux[n][i] = zL*fL[n] + zR*fR[n]; // + d[n];
 
     _flux[MX][i] += sLR*pts;
@@ -337,7 +337,7 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 // #if !MFIELD
 //
 // void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
-//               ints i1, ints i2, real gam)
+//               int i1, int i2, real gam)
 // {
 //
 //   real ptL, ptR;
@@ -345,7 +345,7 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 //   real sM, sL,sR;
 //   real sRsLi, sLsMi,sRsMi;
 //   real xL,xR;
-//   ints i, n;
+//   int i, n;
 //
 //   real wL[NMODE];
 //   real wR[NMODE];
@@ -447,7 +447,7 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 // Isothermal Riemann solver based on Mignone 2012.
 
 void hllt_flux(real **_flux, real **_wL, real **_wR, real *_bx,
-              ints i1, ints i2, real gam)
+              int i1, int i2, real gam)
 {
 
   real uL[NMODE];
@@ -465,9 +465,9 @@ void hllt_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
 
 #pragma omp simd simdlen(SIMD_WIDTH) private(uL,uR, uLs,uRs, uCs, wL,wR, fL,fR)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODE; ++n) {
+    for (int n=0; n<NMODE; ++n) {
       wL[n] = _wL[n][i];
       wR[n] = _wR[n][i];
     }
@@ -578,25 +578,25 @@ void hllt_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
 
     if (sL>0.)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fL[n];
 
     if (sL<=0. && 0.<sLs)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fL[n] + sL * (uLs[n] - uL[n]);
 
 #if MFIELD
     if (sLs<=0. && 0.<sRs)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fL[n] + sL * (uLs[n] - uL[n]) + sLs * (uCs[n] - uLs[n]);
 #endif
 
     if (sRs<=0. && 0.<sR)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fR[n] + sR * (uRs[n] - uR[n]);
 
     if (sR<=0.)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fR[n];
 
 #if MFIELD
@@ -617,7 +617,7 @@ void hllt_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 // HLLD flux.
 
 void hlld_flux(real **_flux, real **_wL, real **_wR, real *_bx,
-              ints i1, ints i2, real gam)
+              int i1, int i2, real gam)
 {
 
   real uL[NMODE];
@@ -637,9 +637,9 @@ void hlld_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
 
 #pragma omp simd simdlen(SIMD_WIDTH) private(uL,uR, uLs,uRs, uLss,uRss, wL,wR, fL,fR)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODE; ++n) {
+    for (int n=0; n<NMODE; ++n) {
       wL[n] = _wL[n][i];
       wR[n] = _wR[n][i];
     }
@@ -807,27 +807,27 @@ void hlld_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
 
     if (sL>0.)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fL[n];
 
     if (sL<=0. && 0.<sLs)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fL[n] + sL * (uLs[n] - uL[n]);
 
     if (sLs<=0. && 0.<sM)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fL[n] + sL * (uLs[n] - uL[n]) + sLs * (uLss[n] - uLs[n]);
 
     if (sM<=0. && 0.<sRs)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fR[n] + sR * (uRs[n] - uR[n]) + sRs * (uRss[n] - uRs[n]);
 
     if (sRs<=0. && 0.<sR)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fR[n]  + sR * (uRs[n] - uR[n]);
 
     if (sR<=0.)
-      for (ints n=0; n<NMODE; ++n)
+      for (int n=0; n<NMODE; ++n)
         _flux[n][i] = fR[n];
 
     _flux[BX][i] = 0.;
@@ -846,7 +846,7 @@ void hlld_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 #if CGL
 
 void hlla_flux(real **_flux, real **_wL, real **_wR, real *_bx,
-              ints i1, ints i2, real gam)
+              int i1, int i2, real gam)
 {
 
   real wL[NMODE];
@@ -865,9 +865,9 @@ void hlla_flux(real **_flux, real **_wL, real **_wR, real *_bx,
   //   F[i][NMODE] = 3*((WR[i][PPD]-WR[i][P])/b2hR - (WL[i][PPD]-WL[i][P])/b2hL)
 
 #pragma omp simd simdlen(SIMD_WIDTH) private(uL,uR, uhll,fhll, wL,wR, fL,fR)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for(ints n=0; n<NMODE; ++n) {
+    for(int n=0; n<NMODE; ++n) {
       wL[n] = _wL[n][i];
       wR[n] = _wR[n][i];
     }
@@ -899,7 +899,7 @@ void hlla_flux(real **_flux, real **_wL, real **_wR, real *_bx,
     real cLcR = cL*cR;
     real cRmcLi = 1./(cR-cL);
 
-    for (ints k=0; k<NMODE; k++) {
+    for (int k=0; k<NMODE; k++) {
       fhll[k] = (cR * fL[k] - cL * fR[k] + cLcR * (uR[k] - uL[k])) * cRmcLi;
       uhll[k] = (cR * uR[k] - cL * uL[k] - fR[k] + fL[k]) * cRmcLi;
     }
@@ -1003,12 +1003,12 @@ void hlla_flux(real **_flux, real **_wL, real **_wR, real *_bx,
 
     if (aL1<0. || aR1<0. || as1<0.)
 
-      for (ints n=0; n<NMODE; n++)
+      for (int n=0; n<NMODE; n++)
         _flux[n][i]=fhll[n];
 
     else {
 
-      for (ints n=0; n<BX; n++)
+      for (int n=0; n<BX; n++)
         if (n != MY && n != MZ)
           _flux[n][i] = fhll[n];
 

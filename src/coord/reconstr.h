@@ -1,34 +1,35 @@
 #include <stddef.h>
 #include "../defs.h"
+#include "../coord/coord.h"
 
-extern real MMlim(real a, real b) __attribute__((always_inline));
-extern real MClim(real a, real b) __attribute__((always_inline));
-extern real VLlim(real a, real b) __attribute__((always_inline));
-extern real L2lim(real a, real b) __attribute__((always_inline));
+extern real mm_lim(real a, real b) __attribute__((always_inline));
+extern real mc_lim(real a, real b) __attribute__((always_inline));
+extern real vl_lim(real a, real b) __attribute__((always_inline));
+extern real l2_lim(real a, real b) __attribute__((always_inline));
 
 extern void reconstr_const(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc,  int ax,
-                     ints i1, ints i2, ints j, ints k,
+                     int i1, int i2, int j, int k,
                      int char_proj, real gam);
 
 extern void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc, int ax,
-                     ints i1, ints i2, ints j, ints k,
+                     int i1, int i2, int j, int k,
                      int char_proj, real gam);
 
 // extern void reconstr_parab0(real **wl, real **wr, real ***w, real ***scr,
 //                      GridCoord *gc, int ax,
-//                      ints i1, ints i2, ints j, ints k,
+//                      int i1, int i2, int j, int k,
 //                      int char_proj, real gam);
 
 extern void reconstr_parab(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc, int ax,
-                     ints i1, ints i2, ints j, ints k,
+                     int i1, int i2, int j, int k,
                      int char_proj, real gam);
 
 extern void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc, int ax,
-                     ints i1, ints i2, ints j, ints k,
+                     int i1, int i2, int j, int k,
                      int char_proj, real gam);
 
 

@@ -8,12 +8,11 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange, parallel, threadid
 
-from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
 from libc.stdlib cimport malloc, calloc, free
 from libc.stdio cimport printf
 
-from bnz.utils cimport print_root, sqr
-from bnz.coord.coordinates cimport get_cell_vol
+from bnz.utils cimport print_root
+from bnz.coord.coord_cy cimport get_cell_vol
 
 
 cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
@@ -21,14 +20,14 @@ cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
   # in primitive variables
 
   cdef:
-    ints i,j,k, n
+    int i,j,k, n
     int id
     real dv
     real ek,em,et,ep
     real ekm=0., etm=0., emm=0., epm=0.
 
   cdef:
-    GridCoord gc = grid.coord
+    GridCoord *gc = grid.coord
     real4d w = grid.data.prim
   IF MHDPIC:
     cdef BnzParticles prts = grid.prts
@@ -60,10 +59,10 @@ cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
       for j in range(gc.j1, gc.j2+1):
         for i in range(gc.i1, gc.i2+1):
 
-          vol = get_cell_vol(gc, i,j,k)
+          dv = get_cell_vol(gc, i,j,k)
 
-          ek = 0.5*(sqr(w[VX,k,j,i]) + sqr(w[VY,k,j,i]) + sqr(w[VZ,k,j,i])) * w[RHO,k,j,i]
-          IF MFIELD: em = 0.5*(sqr(w[BX,k,j,i]) + sqr(w[BY,k,j,i]) + sqr(w[BZ,k,j,i]))
+          ek = 0.5*(SQR(w[VX,k,j,i]) + SQR(w[VY,k,j,i]) + SQR(w[VZ,k,j,i])) * w[RHO,k,j,i]
+          IF MFIELD: em = 0.5*(SQR(w[BX,k,j,i]) + SQR(w[BY,k,j,i]) + SQR(w[BZ,k,j,i]))
 
           et = gamm1i * w[PR,k,j,i]
           IF TWOTEMP: et = et + gamm1i * e[PE,k,j,i]

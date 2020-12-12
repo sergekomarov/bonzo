@@ -8,20 +8,19 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange, parallel, threadid
 
-from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
 from libc.stdlib cimport malloc, calloc, free
 from libc.stdio cimport printf
 
-from bnz.utils cimport print_root, sqr
-from bnz.coord.coordinates cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
+from bnz.utils cimport print_root
+from bnz.coord.coord_cy cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
 
 
-cdef double new_dt(real4d w, GridCoord *gc, BnzIntegr integr):
+cdef real new_dt(real4d prim, GridCoord *gc, BnzIntegr integr):
 
   cdef:
 
-    ints i,j,k, n, ig,jg,kg
-    ints id
+    int i,j,k, n, ig,jg,kg
+    int id
 
     real vfx,vfy,vfz, cx,cy,cz, rhoi
     real dlmin
@@ -58,7 +57,7 @@ cdef double new_dt(real4d w, GridCoord *gc, BnzIntegr integr):
         for i in range(gc.i1, gc.i2+1):
 
           for n in range(NMODE):
-            _w[n] = w[n,k,j,i]
+            _w[n] = prim[n,k,j,i]
 
           # if W[PR,k,j,i]<0:
           #   lind2gind(&ig,&jg,&kg, i,j,k, gp)
@@ -71,30 +70,29 @@ cdef double new_dt(real4d w, GridCoord *gc, BnzIntegr integr):
           IF MFIELD: bx,by,bz = _w[BX],_w[BY],_w[BZ]
 
           vfx = fms(_w, bx, integr.gam)
-          cx = fabs(_w[VX]) + vfx
+          cx = FABS(_w[VX]) + vfx
 
           IF D2D:
             vfy = fms(_w, by, integr.gam)
-            cy = fabs(_w[VY]) + vfy
+            cy = FABS(_w[VY]) + vfy
 
           IF D3D:
             vfz = fms(_w, bz, integr.gam)
-            cz = fabs(_w[VZ]) + vfz
+            cz = FABS(_w[VZ]) + vfz
 
           dsx = get_cell_width_x(gc,i,j,k)
           dsy = get_cell_width_y(gc,i,j,k)
           dsz = get_cell_width_z(gc,i,j,k)
 
-          cds = fmax(fmax(cx/dsx, cy/dsy), cz/dsz)
+          cds = FMAX(FMAX(cx/dsx, cy/dsy), cz/dsz)
 
           if cds > cdsmaxloc[id]: cdsmaxloc[id] = cds
 
           IF MHDPIC:
-            b2 = sqr(_w[BX]) + sqr(_w[BY]) + sqr(_w[BZ])
+            b2 = SQR(_w[BX]) + SQR(_w[BY]) + SQR(_w[BZ])
             if b2 > b2maxloc[id]: b2maxloc[id] = b2
 
     free(_w)
-
 
   #-----------------------------------------------
 
@@ -112,18 +110,18 @@ cdef double new_dt(real4d w, GridCoord *gc, BnzIntegr integr):
       comm.Allreduce(var, var_max, op=mpi.MAX)
       b2max = var_max[0]
 
-  dtmhd = cour / cdsmax
+  dtmhd = integr.cour / cdsmax
   IF MHDPIC:
     # ! only for uniform Cartesian grids
-    dlmin = fmin(fmin(gc.dlf[0][0], gc.dlf[1][0]), gc.dlf[2][0])
-    dtp = 0.9*fmin(1./(3 * integr.q_mc * sqrt(b2max)),
-                  dlmin / integr.sol)
+    dlmin = FMIN(FMIN(gc.dlf[0][0], gc.dlf[1][0]), gc.dlf[2][0])
+    dtp = 0.9*FMIN(1./(3 * integr.q_mc * SQRT(b2max)),
+                   dlmin / integr.sol)
 
   print_root("MHD dt = %f\n", dtmhd)
   IF MHDPIC:
     print_root("Particle dt = %f\n", dtp)
 
-  IF MHDPIC: dt = fmin(dtmhd, dtp)
+  IF MHDPIC: dt = FMIN(dtmhd, dtp)
   ELSE: dt = dtmhd
 
   return dt

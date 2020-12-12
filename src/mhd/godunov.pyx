@@ -12,20 +12,18 @@ from bnz.utils cimport maxi, print_root, timediff
 from bnz.utils cimport swap_array_ptrs
 from bnz.utils cimport calloc_2d_array, free_2d_array
 
-from bnz.coord.coordinates cimport get_cell_vol, get_face_area_x
-from bnz.coord.coordinates cimport get_face_area_y, get_face_area_z
+from bnz.coord.coord_cy cimport get_cell_vol, get_face_area_x
+from bnz.coord.coord_cy cimport get_face_area_y, get_face_area_z
 
-
-# ===============================================================
-
-# Calculate Godunov fluxes from conserved variables.
 
 cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
-                         real4d prim, real4d bf, GridCoord *gc, ints *lims,
+                         real4d prim, real4d bf, GridCoord *gc, int *lims,
                          BnzIntegr integr, int order):
 
+  # Calculate Godunov fluxes from conserved variables.
+
   cdef:
-    ints i,j,k,n,d, n1,d1
+    int i,j,k,n,d, n1,d1
     timeval tstart, tstart_step, tstop
 
   cdef:
@@ -42,8 +40,8 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
     # scratch array used in reconstruction
     real ***rcn_scr
   cdef:
-    ints il,iu, jl,ju, kl,ku
-    ints ib,ie, jb,je, kb,ke
+    int il,iu, jl,ju, kl,ku
+    int ib,ie, jb,je, kb,ke
 
   # these are the limits of the resulting hydro array after it will have been
   # advanced in time with the fluxes
@@ -51,9 +49,9 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
 
   cdef:
     # swap velocity and magnetic field components in cyclic order
-    ints1d varsx = swap_mhd_vec(XAX)
-    ints1d varsy = swap_mhd_vec(YAX)
-    ints1d varsz = swap_mhd_vec(ZAX)
+    int1d varsx = swap_mhd_vec(XAX)
+    int1d varsy = swap_mhd_vec(YAX)
+    int1d varsz = swap_mhd_vec(ZAX)
 
   # set reconstruction function based on the selected method and order
   cdef ReconstrFunc reconstr_func = get_reconstr_func(order, integr)
@@ -211,19 +209,18 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
       free(flux1)
 
 
-
-# ====================================================================
-
-# Advance cell-centered hydrodynamic variables using Godunov fluxes.
+# ----------------------------------------------------------------------------
 
 cdef void advance_hydro(real4d u1, real4d u0, real4d fx, real4d fy, real4d fz,
-                        GridCoord *gc, ints *lims, real dt) nogil:
+                        GridCoord *gc, int *lims, real dt) nogil:
+
+  # Advance cell-centered hydrodynamic variables using Godunov fluxes.
 
   cdef:
-    ints i,j,k,n
+    int i,j,k,n
     real dtdv, dam,dap
 
-  cdef ints Nvar_hydro
+  cdef int Nvar_hydro
   IF MFIELD: Nvar_hydro = NMODE-3
   ELSE: Nvar_hydro = NMODE
 
@@ -244,25 +241,24 @@ cdef void advance_hydro(real4d u1, real4d u0, real4d fx, real4d fy, real4d fz,
             dam = get_face_area_y(gc,i,j,  k)
             dap = get_face_area_y(gc,i,j+1,k)
 
-            u1[n,k,j,i] = u0[n,k,j,i] - dtdv * (dap * fy[n,k,j+1,i]
-                                              - dam * fy[n,k,j,i])
+            u1[n,k,j,i] -= dtdv * (dap * fy[n,k,j+1,i] - dam * fy[n,k,j,i])
+
           IF D3D:
 
             dam = get_face_area_z(gc,i,j,k)
             dap = get_face_area_z(gc,i,j,k+1)
 
-            u1[n,k,j,i] = u0[n,k,j,i] - dtdv * (dap * fz[n,k+1,j,i]
-                                              - dam * fz[n,k,j,i])
+            u1[n,k,j,i] -= dtdv * (dap * fz[n,k+1,j,i] - dam * fz[n,k,j,i])
 
 
 
-# ==============================================================================
+# --------------------------------------------------------------------
 
-# cdef void apply_pressure_floor(real4d U, ints lims[6],
+# cdef void apply_pressure_floor(real4d U, int lims[6],
 #                                double p_flr, double gam) nogil:
 #
 #   cdef:
-#     ints i,j,k
+#     int i,j,k
 #     real rhoi, p,pe, ek, em=0.
 #     real gamm1 = gam-1, gamm1i = 1./gamm1
 #
@@ -295,14 +291,14 @@ cdef void advance_hydro(real4d u1, real4d u0, real4d fx, real4d fy, real4d fz,
 
 
 
-# ======================================================================
+# ---------------------------------------------------------------------------
 
-cdef ints1d swap_mhd_vec(ints ax):
+cdef int1d swap_mhd_vec(int ax):
 
   cdef:
-    ints n
-    ints Nvar_hydro
-    ints[::1] vars=np.zeros(NMODE,np.intp)
+    int n
+    int Nvar_hydro
+    int[::1] vars=np.zeros(NMODE,np.intp)
 
   IF MFIELD: Nvar_hydro = NMODE-3
   ELSE: Nvar_hydro = NMODE
@@ -327,9 +323,9 @@ cdef ints1d swap_mhd_vec(ints ax):
   return vars
 
 
-# ==============================================================================
+# --------------------------------------------------------------------
 
-cdef ReconstrFunc get_reconstr_func(int order, BnzInteg integr) nogil:
+cdef ReconstrFunc get_reconstr_func(int order, BnzIntegr integr) nogil:
 
   if order==0:
     return reconstr_const

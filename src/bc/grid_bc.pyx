@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from mpi4py import MPI as mpi
-from mpi4py cimport MPI as mpi
+IF MPI:
+  from mpi4py import MPI as mpi
+  from mpi4py cimport MPI as mpi
 
 import numpy as np
 cimport numpy as np
 
 import sys
 
-from libc.math cimport sqrt,floor,ceil,log,exp,sin,cos,pow,fabs,fmin,fmax
-
-from bnz.utils cimport print_root, maxi, mini, sqr
+from bnz.utils cimport print_root
 from bnz.io.read_config import read_param
 from bnz.problem.problem cimport set_grid_bc_user
 from grid_bc_funcs cimport *
@@ -32,7 +31,7 @@ cdef class GridBc:
 
   def __cinit__(self, GridCoord *gc, bytes usr_dir):
 
-    cdef ints i,k
+    cdef int i,k
 
     for i in range(3):
       for k in range(2):
@@ -65,8 +64,8 @@ cdef class GridBc:
           self.bc_flags[1][0] = 0
           self.bc_flags[1][1] = 0
       if gc.geom==CG_SPH:
-        # reflective at theta=0 or theta=pi
-        if gc.lmin[1]==0.: self.bc_flags[1][0] = 2
+        # special reflective at theta=0 or theta=pi
+        if gc.lmin[1]==0.:   self.bc_flags[1][0] = 2
         if gc.lmax[1]==B_PI: self.bc_flags[1][1] = 2
     IF D3D:
       if gc.geom==CG_SPH:
@@ -78,9 +77,9 @@ cdef class GridBc:
     # Set BC function pointers.
 
     cdef:
-      ints sx=gc.size[0], sy=gc.size[1], sz=gc.size[2]
-      ints px=gc.pos[0], py=gc.pos[1], pz=gc.pos[2]
-      ints ph_pos, th_pos
+      int sx=gc.size[0], sy=gc.size[1], sz=gc.size[2]
+      int px=gc.pos[0], py=gc.pos[1], pz=gc.pos[2]
+      int ph_pos, th_pos
 
     # -------------------------------------------------------
 
@@ -228,7 +227,7 @@ cdef class GridBc:
             ph_pos = (py + sy/2) % sy
             gc.nbr_ranks[0][0] = gc.ranks[0][ph_pos][pz]
 
-      if gc.lmin[1]==0. and gc.lmin[1]==2*B_PI:
+      if gc.lmin[1]==0. and gc.lmax[1]==2*B_PI:
         self.grid_bc_funcs[1][0] = y1_grid_bc_periodic
         self.grid_bc_funcs[1][1] = y2_grid_bc_periodic
         IF MHDPIC:
@@ -237,10 +236,10 @@ cdef class GridBc:
 
         IF MPI:
           if py==0 and sy>1:
-            gc.nbr_ranks[1][0] = gc.ranks[px][sy-1][ pz]
+            gc.nbr_ranks[1][0] = gc.ranks[px][sy-1][pz]
 
           if py==sy-1 and sy>1:
-            gc.nbr_ranks[1][1] = gc.ranks[px][0][ pz]
+            gc.nbr_ranks[1][1] = gc.ranks[px][0][pz]
 
     if gc.geom==CG_SPH:
 
@@ -268,7 +267,7 @@ cdef class GridBc:
             ph_pos = (pz + sz/2) % sz
             gc.nbr_ranks[1][0] = gc.ranks[px][0][ph_pos]
 
-      if gc.lmin[1]==B_PI:
+      if gc.lmax[1]==B_PI:
         self.grid_bc_funcs[1][1] = th2_grid_bc_sph
         IF MHDPIC:
           self.exch_bc_funcs[1][1] = th2_exch_bc_sph
@@ -301,7 +300,7 @@ cdef class GridBc:
 
     # Check if all BCs have been set.
 
-    cdef ints i,k
+    cdef int i,k
 
     for i in range(3):
       for k in range(2):
@@ -326,8 +325,9 @@ cdef class GridBc:
       # Allocate BC buffers for MPI.
 
       cdef:
-        ints bufsize, n, ndim=1
-        ints Nxyz =  maxi(maxi(gc.Ntot[0],gc.Ntot[1]), gc.Ntot[2])
+        int n, ndim=1
+        long bufsize
+        long Nxyz =  IMAX(IMAX(gc.Ntot[0],gc.Ntot[1]), gc.Ntot[2])
 
       IF D2D: ndim += 1
       IF D3D: ndim += 1
@@ -349,11 +349,34 @@ cdef class GridBc:
       self.sendbuf_size = bufsize
 
 
-  #-------------------------------------------------------------------
+  # -------------------------------------------------------------------------
+
+  cdef void apply_grid_bc(self, GridData gd, GridCoord *gc,
+                          BnzIntegr integr, int1d bvars):
+
+    cdef:
+      PackFunc pack_func = &pack_grid_all
+      UnpackFunc unpack_func = &unpack_grid_all
+
+    apply_bc(self,gd,gc, integr, bvars, self.grid_bc_funcs, pack_func, unpack_func)
+
+  IF MHDPIC:
+
+    cdef void apply_exch_bc(self, GridData gd, GridCoord *gc,
+                            BnzIntegr integr, int1d bvars):
+
+      cdef:
+        PackFunc pack_func = &pack_exch_all
+        UnpackFunc unpack_func = &unpack_exch_all
+
+      apply_bc(self,gd,gc, integr, bvars, self.exch_bc_funcs, pack_func, unpack_func)
+
+
+  #--------------------------------------------------------------------------
 
   def __dealloc__(self):
 
-    cdef ints i,k
+    cdef int i,k
 
     for i in range(3):
       for k in range(2):
@@ -365,48 +388,21 @@ cdef class GridBc:
           self.exch_bc_funcs[i][k] = NULL
 
 
-# =============================================================================
-
-cdef void apply_grid_bc(BnzSim sim, ints[::1] bvars):
-
-  cdef:
-    PackFunc pack_func = &pack_grid_all
-    UnpackFunc unpack_func = &unpack_grid_all
-
-  apply_bc(sim, bvars, sim.grid.bc.grid_bc_funcs, pack_func, unpack_func)
-
-IF MHDPIC:
-
-  cdef void apply_exch_bc(BnzSim sim, ints[::1] bvars):
-
-    cdef:
-      PackFunc pack_func = &pack_exch_all
-      UnpackFunc unpack_func = &unpack_exch_all
-
-    apply_bc(sim, bvars, sim.grid.bc.exch_bc_funcs, pack_func, unpack_func)
-
-
-
 # --------------------------------------------------------------------------
 
-cdef void apply_bc(BnzSim sim, ints[::1] bvars, GridBcFunc bc_funcs[3][2],
+cdef void apply_bc(GridBc gbc, GridData gd, GridCoord *gc, BnzIntegr integr,
+                   int1d bvars, GridBcFunc bc_funcs[3][2],
                    PackFunc pack_func, UnpackFunc unpack_func):
 
   IF MPI:
 
-    cdef:
-      BnzGrid grid = sim.grid
-      GridCoord gc = grid.coord
-      GridData gd = grid.data
-      GridBC gbc = grid.bc
-
-    cdef ints nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
+    cdef int nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
 
     if bvars is None:
       # if bvars not specified, apply BC to all variables
-      bvars = np.arange(NFIELD, dype=np.intp)
+      bvars = np.arange(NVAR, dype=np.intp)
 
-    cdef ints nbvar = bvars.size
+    cdef int nbvar = bvars.size
 
     cdef:
 
@@ -414,26 +410,15 @@ cdef void apply_bc(BnzSim sim, ints[::1] bvars, GridBcFunc bc_funcs[3][2],
       int done
       mpi.Request send_req1, send_req2, recv_req1, recv_req2
 
-      ints cnt1,cnt2
+      int cnt1,cnt2
 
       real2d sendbuf = gbc.sendbuf
       real2d recvbuf = gbc.recvbuf
-      ints **nbr_ranks = gc.nbr_ranks
+      int **nbr_ranks = gc.nbr_ranks
 
     cdef:
-      int rtagl=1, rtagr=0
-      int stagl=0, stagr=1
-
-    if gc.geom==CG_SPH:
-      if gc.lf[0][gc.i1]==0.:
-        stagl=2
-        rtagl=2
-      if gc.lf[0][gc.i2+1]==B_PI:
-        stagr=2
-        rtagr=2
-    if gc.geom==CG_CYL and gc.lf[0][gc.i1]==0.:
-      stagl=2
-      rtagl=2
+      int rtagl, rtagr
+      int stagl, stagr
 
     # Do MPI exchange from z- to x-direction in order to use the same procedure
     # to set ghost cells normally as well as to exchange particle deposits
@@ -442,6 +427,9 @@ cdef void apply_bc(BnzSim sim, ints[::1] bvars, GridBcFunc bc_funcs[3][2],
     # ------- data exchange in z-direction --------------
 
     IF D3D:
+
+      rtagl,rtagr=1,0
+      stagl,stagr=0,1
 
       cnt1 = nx * ny * ng * nbvar
       cnt2 = cnt1
@@ -502,6 +490,17 @@ cdef void apply_bc(BnzSim sim, ints[::1] bvars, GridBcFunc bc_funcs[3][2],
 
     IF D2D:
 
+      rtagl,rtagr=1,0
+      stagl,stagr=0,1
+
+      if gc.geom==CG_SPH:
+        if gc.lf[1][gc.j1]==0.:
+          stagl=2
+          rtagl=2
+        if gc.lf[1][gc.j2+1]==B_PI:
+          stagr=2
+          rtagr=2
+
       cnt1 = nx * nz * ng * nbvar
       cnt2 = cnt1
 
@@ -560,6 +559,13 @@ cdef void apply_bc(BnzSim sim, ints[::1] bvars, GridBcFunc bc_funcs[3][2],
 
     # ------- data exchange in x-direction --------------
 
+    rtagl,rtagr=1,0
+    stagl,stagr=0,1
+
+    if gc.geom==CG_CYL or gc.geom==CG_SPH:
+      if gc.lf[0][gc.i1]==0.:
+        stagl=2
+        rtagl=2
 
     cnt1 = ny * nz * ng * nbvar
     cnt2 = cnt1

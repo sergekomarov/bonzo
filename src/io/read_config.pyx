@@ -4,18 +4,12 @@ IF MPI:
   from mpi4py import MPI as mpi
   from mpi4py cimport MPI as mpi
 
-import numpy as np
-cimport numpy as np
-
 import ConfigParser
 import os, sys
 
-
-# ==============================================================
-
 cpdef read_param(param_type, param_name, dtype, usr_dir):
 
-  cdef ints rank=0
+  cdef int rank=0
   IF MPI: rank=mpi.COMM_WORLD.Get_rank()
 
   param=0.

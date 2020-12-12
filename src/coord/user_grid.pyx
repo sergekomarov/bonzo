@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from bnz.defs_cy cimport *
+from coord_cy cimport GridCoord
+
 import numpy as np
 cimport numpy as np
 
@@ -12,7 +15,7 @@ ELSE:
 cpdef set_user_coord_x(GridCoord *gc):
 
   cdef:
-    ints i, iloc
+    int i, iloc
     real dx, x, x0
 
   dx = (gc.lmax[0]-gc.lmin[0]) / gc.Nact_glob[0]
@@ -28,7 +31,7 @@ cpdef set_user_coord_x(GridCoord *gc):
 cpdef set_user_coord_y(GridCoord *gc):
 
   cdef:
-    ints j, jloc
+    int j, jloc
     real dy, y, y0
 
   dy = (gc.lmax[1]-gc.lmin[1]) / gc.Nact_glob[1]
@@ -44,7 +47,7 @@ cpdef set_user_coord_y(GridCoord *gc):
 cpdef set_user_coord_z(GridCoord *gc):
 
   cdef:
-    ints k, ikloc
+    int k, ikloc
     real dz, z, z0
 
   dz = (gc.lmax[2]-gc.lmin[2]) / gc.Nact_glob[2]

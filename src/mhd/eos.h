@@ -1,14 +1,14 @@
 #include "../defs.h"
 
-wxtern void prim2cons(real *u, real *w, real gam) __attribute__((always_inline));
+extern void prim2cons(real *u, real *w, real gam) __attribute__((always_inline));
 extern void prim2flux(real *f, real *w, real gam) __attribute__((always_inline));
 extern void primcons2flux(real *f, real *w, real *u, real gam) __attribute__((always_inline));
 extern real fms(real *w, real Bx, real gam) __attribute__((always_inline));
 
-extern void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam);
-extern void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam);
-extern void prim2char_1(real **vc, real **W1, ints i1, ints i2, real gam);
-extern void char2prim_1(real **vc, real **W1, ints i1, ints i2, real gam);
+extern void cons2prim_1(real **W1, real **U1, int i1, int i2, real gam);
+extern void prim2cons_1(real **U1, real **W1, int i1, int i2, real gam);
+extern void prim2char_1(real **vc, real **W1, int i1, int i2, real gam);
+extern void char2prim_1(real **vc, real **W1, int i1, int i2, real gam);
 
 
 // ======================================================
@@ -158,7 +158,7 @@ void inline primcons2flux(real *f, real *w,real *u, real gam) {
   ptot += w[PE];
 #endif
 
-  for (ints n=0; n<BX; ++n)
+  for (int n=0; n<BX; ++n)
     f[n] = u[n]*w[VX];
 
   f[MX] += ptot;

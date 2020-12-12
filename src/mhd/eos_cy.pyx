@@ -11,15 +11,15 @@ from libc.stdlib cimport malloc, calloc, free
 
 # ==============================================================================
 
-cdef void cons2prim_3(real4d w, real4d u, ints lims[6], real gam) nogil:
+cdef void cons2prim_3(real4d w, real4d u, int lims[6], real gam) nogil:
 
   cdef:
-    ints j,k,n
+    int j,k,n
     real **u1
     real **w1
 
   with nogil, parallel(num_threads=OMP_NT):
-
+    
     u1 = <real**>calloc(NMODE, sizeof(real*))
     w1 = <real**>calloc(NMODE, sizeof(real*))
 
@@ -38,10 +38,10 @@ cdef void cons2prim_3(real4d w, real4d u, ints lims[6], real gam) nogil:
 
 #===============================================================================
 
-cdef void prim2cons_3(real4d u, real4d w, ints lims[6], real gam) nogil:
+cdef void prim2cons_3(real4d u, real4d w, int lims[6], real gam) nogil:
 
   cdef:
-    ints j,k,n
+    int j,k,n
     real **u1
     real **w1
 

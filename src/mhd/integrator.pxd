@@ -1,48 +1,48 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs_cy cimport *
-from bnz.coord.grid cimport *
+from bnz.coord.coord_cy cimport GridCoord
 
 
 cdef extern from "reconstr.h" nogil:
   void reconstr_const(real**, real**, real***, real ***,
                       GridCoord*, int,
-                      ints,ints,ints,ints,
+                      int,int,int,int,
                       int, real)
   void reconstr_linear(real**, real**, real***, real ***,
                        GridCoord*, int,
-                       ints,ints,ints,ints,
+                       int,int,int,int,
                        int, real)
   # void reconstr_parab0(real**, real**, real***, real ***,
   #                      GridCoord*, int,
-  #                      ints,ints,ints,ints,
+  #                      int,int,int,int,
   #                      int, real)
   void reconstr_parab(real**, real**, real***, real ***,
                        GridCoord*, int,
-                       ints,ints,ints,ints,
+                       int,int,int,int,
                        int, real)
   void reconstr_weno(real**, real**, real***, real ***,
                      GridCoord*, int,
-                     ints,ints,ints,ints,
+                     int,int,int,int,
                      int, real)
 
 cdef extern from "fluxes.h" nogil:
-  void hll_flux(real**, real**, real**, real*, ints,ints, real)
-  void hllt_flux(real**, real**, real**, real*, ints,ints, real)
+  void hll_flux(real**, real**, real**, real*, int,int, real)
+  void hllt_flux(real**, real**, real**, real*, int,int, real)
 
 IF MFIELD:
   cdef extern from "fluxes.h" nogil:
-    void hlld_flux(real**, real**, real**, real*, ints,ints, real)
+    void hlld_flux(real**, real**, real**, real*, int,int, real)
 ELSE:
   cdef extern from "fluxes.h" nogil:
-    void hllc_flux(real**, real**, real**, real*, ints,ints, real)
+    void hllc_flux(real**, real**, real**, real*, int,int, real)
 
 IF CGL:
   cdef extern from "fluxes.h" nogil:
-    void hlla_flux(real**, real**, real**, real*, ints,ints, real)
+    void hlla_flux(real**, real**, real**, real*, int,int, real)
 
 
-#==========================================================================
+# -----------------------------------------------------------------
 
 # Identifiers.
 
@@ -78,7 +78,7 @@ ctypedef enum Reconstr:
 # function pointer to Riemann solver
 ctypedef void (*RSolverFunc)(
             real**, real**, real**, real*,   # &flux, wl, wr, bx
-            ints, ints,                      # start/end x-indices
+            int, int,                        # start/end x-indices
             real) nogil                      # gas gamma
 
 # pointer to limiter function
@@ -90,17 +90,17 @@ ctypedef void (*ReconstrFunc)(
             real***,            # array of variables along x-axis
             real***,            # scratch arrays
             int,                # orientation of cell interfaces
-            ints,ints,          # start/end x-indices
-            ints,ints,          # y- and z-indices of the slice along x
+            int,int,            # start/end x-indices
+            int,int,            # y- and z-indices of the slice along x
             int,                # characteristic projection on/off
             real                # gas gamma
             ) nogil
 
-IF MHDPIC:
-  # function pointer to particle interpolation kernel
-  ctypedef void (*WeightFunc)(ints*, ints*, ints*,
-                      real, real, real, real***,
-                      real, int) nogil
+# IF MHDPIC:
+#   # function pointer to particle interpolation kernel
+#   ctypedef void (*WeightFunc)(int*, int*, int*,
+#                       real, real, real, real***,
+#                       real, int) nogil
 
 # Array structures used by the integrator.
 
@@ -111,7 +111,7 @@ cdef class IntegrData:
     real4d ec           # cell-centered electric field
     real4d ee           # edge-centered electric field
 
-    real4d flux_x, flux_y, flux_z   # Godunov fluxes
+    real4d flx_x, flx_y, flx_z   # Godunov fluxes
 
     real4d cons_s       # predictor-step arrays of cell-centered conserved variables
     real4d cons_ss
@@ -124,8 +124,8 @@ cdef class IntegrData:
     real4d fdriv        # driving force
     real3d nuii_eff     # effective ion collision rate
 
-    IF MHDPIC:
-      cdef real4d fcoup_tmp
+    # IF MHDPIC:
+    #   cdef real4d fcoup_tmp
 
 # Scatch arrays used by reconstruction and Riemann solver C routines.
 
@@ -137,16 +137,30 @@ cdef class IntegrScratch:
     real ***wr
     real ***wl_
 
-# cdef class IntegrPhys:
-#
-#   cdef real gam
-
 
 # Integrator class.
 
 cdef class BnzIntegr:
 
+  cdef IntegrData data
+  cdef IntegrScratch scratch
+  
+  cdef BnzGravity gravity
+  cdef BnzTurbDriv turb_driv
+
   cdef:
+
+    # current time
+    real time
+
+    # current step number
+    int nstep
+
+    # current timestep
+    real dt
+
+    # maximum time
+    real tmax
 
     # Courant number
     real cour
@@ -167,9 +181,6 @@ cdef class BnzIntegr:
     # Limiter limiter
     # LimiterFunc limiter_func
 
-    IntegrData data
-    IntegrScratch scratch
-
     # limiting in characteristic variables on/off
     int charact_proj
 
@@ -178,29 +189,15 @@ cdef class BnzIntegr:
     # density floor
     real rho_floor
 
-    # parabolic Courant number
-    real cour_diff
-
-    # super-time-stepping on(1)/off(0)
-    int sts
-
     # gas gamma
     real gam
 
-  IF MHDPIC:
+    # int Ninterp              # order of interpolation (for MHDPIC)
+    # WeightFunc weight_func   # pointer to kernel weight function
 
-    cdef:
-
-      int Ninterp              # order of interpolation (for MHDPIC)
-      WeightFunc weight_func   # pointer to kernel weight function
-
-      real sol        # effective speed of light
-      real q_mc       # charge-to-mass ratio of CRs relative to thermal ions
-      real rho_cr     # CR density
-
-
-  # Allocate space for integration arrays.
-  cdef void init(self, GridCoord*)
+    real sol        # effective speed of light
+    real q_mc       # charge-to-mass ratio of CRs relative to thermal ions
+    real rho_cr     # CR density
 
 
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs_cy cimport *
-from bnz.coord.grid cimport *
+from bnz.coord.coord_cy cimport GridCoord
 
 cdef extern from "particle.h" nogil:
 
@@ -9,30 +9,27 @@ cdef extern from "particle.h" nogil:
 
   ctypedef struct SpcProp:
     real qm     # charge-to-mass ratio
-    ints Np     # number of particles
-
-cdef extern from "particle.h" nogil:
+    long Np     # number of particles
 
   # General particle properties.
 
-  ctypedef struct ParticleProp:
+  ctypedef struct PrtProp:
 
-    ints ppc           # number of particles per cell
-    ints Nprop         # number of particle properties
-    ints Npmax         # length of particle array
-    ints Np            # number of active particles of all species
-    ints Ns            # number of species
-    SpcProp *spc_props # properties of different species
+    int ppc            # number of particles per cell
+    int Nprop          # number of particle properties
+    long Npmax         # length of particle array
+    long Np            # number of active particles of all species
+    int Ns             # number of species
+    SpcProp *spc_props # properties of particle species
 
     # IF MHDPIC:
-    #   real c           # effective speed of light
-    #   real q_mc        # charge-to-mass ratio of CRs relative to thermal ions
-    #   real rho_cr      # CR density
-
+    #   real c         # effective speed of light
+    #   real q_mc      # charge-to-mass ratio of CRs relative to thermal ions
+    #   real rho_cr    # CR density
 
   # Structure containing arrays of particle properties.
 
-  ctypedef struct ParticleData:
+  ctypedef struct PrtData:
 
     # coordinates
     real *x
@@ -44,24 +41,22 @@ cdef extern from "particle.h" nogil:
     real *v
     real *w
 
-    real *g     # relativistic gamma
+    real *g    # relativistic gamma
 
-    real *m     # mass
-    ints *spc   # specie
-    ints *id    # particle ID
+    real *m    # mass
+    int *spc   # specie
+    long *id   # particle ID
 
 
-cdef class ParticleBc
+from bnz.mhdpic.prt_bc cimport PrtBc
 
 # Particle class.
 
 cdef class BnzParticles:
 
   cdef:
-    ParticleProp *prop
-    ParticleData *data
-    ParticleBc bc
+    PrtProp *prop
+    PrtData *data
+    PrtBc bc
 
   cdef bytes usr_dir
-
-  cdef void init(self, GridCoord*)

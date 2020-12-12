@@ -39,15 +39,15 @@ void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
   real **d  = scr[0];
   real **wc = scr[2];
 
-  real *xif  = gc.lf[ax];
-  real *xiv  = gc.lv[ax];
-  real *dxiv = gc.dlv[ax];
-  real *dxiv_inv = gc.dlv_inv[ax];
+  real *xif  = (gc->lf)[ax];
+  real *xiv  = (gc->lv)[ax];
+  real *dxiv = (gc->dlv)[ax];
+  real *dxiv_inv = (gc->dlv_inv)[ax];
 
-  int is_flat_uni = ( (gc.scale[ax]==CS_UNI) &&
-                     ((gc.geom[ax]==CG_CAR) ||
-                      (gc.geom[ax]==CG_CYL && ax>0) ||
-                      (gc.geom[ax]==CG_SPH && ax==2)) );
+  int is_flat_uni = (  ((gc->scale)[ax]==CS_UNI) &&
+                     ( ((gc->geom )[ax]==CG_CAR) ||
+                       ((gc->geom )[ax]==CG_CYL && ax>0) ||
+                       ((gc->geom )[ax]==CG_SPH && ax==2) ) );
 
   ints ip = (ax==0) ? 1 : 0;
   ints jk=0;
@@ -195,10 +195,10 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
                      ints i1, ints i2, ints j, ints k,
                      int char_proj, real gam) {
 
-  int is_flat_uni = ( (gc.scale[ax]==CS_UNI) &&
-                     ((gc.geom[ax]==CG_CAR) ||
-                      (gc.geom[ax]==CG_CYL && ax>0) ||
-                      (gc.geom[ax]==CG_SPH && ax==2)) );
+  int is_flat_uni = (  ((gc->scale)[ax]==CS_UNI) &&
+                     ( ((gc->geom )[ax]==CG_CAR) ||
+                       ((gc->geom )[ax]==CG_CYL && ax>0) ||
+                       ((gc->geom )[ax]==CG_SPH && ax==2) ) );
 
   ints ip = (ax==0) ? 1 : 0;
   ints jk=0;
@@ -209,15 +209,15 @@ void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
   real **dp = scr[1];
   real **wc = scr[2];
 
-  real *dxiv     = gc.dlv[ax];
-  real *dxiv_inv = gc.dlv_inv[ax];
+  real *dxiv     = (gc->dlv)[ax];
+  real *dxiv_inv = (gc->dlv_inv)[ax];
 
-  real *cm = gc.cm[ax];
-  real *cp = gc.cp[ax];
+  real *cm = (gc->cm)[ax];
+  real *cp = (gc->cp)[ax];
 
   real Cref;
-  if (is_flat_uni) Cref = 20. / gc.Nact_glob[ax];
-  else Cref = 20. / (gc.lmax[ax]-gc.lmin[ax]);
+  if (is_flat_uni) Cref = 20. / (gc->Nact_glob)[ax];
+  else Cref = 20. / ((gc->lmax)[ax] - (gc->lmin)[ax]);
 
 
   for (ints n=0; n<NMODE; ++n) {
@@ -387,24 +387,24 @@ void reconstr_parab(real **_wl, real **_wr, real ***_w, real ***scr,
   real dmhc, dphc;
   real dm,dp, dm_abs,dp_abs;
 
-  real one6th = 1./6;
-  real one12th = 1./12;
-  real C=1.25;
+  real const one6th = 1./6;
+  real const one12th = 1./12;
+  real const C=1.25;
 
-  int is_flat_uni = ( (gc.scale[ax]==CS_UNI) &&
-                     ((gc.geom[ax]==CG_CAR) ||
-                      (gc.geom[ax]==CG_CYL && ax>0) ||
-                      (gc.geom[ax]==CG_SPH && ax==2)) );
+  int is_flat_uni = (  ((gc->scale)[ax]==CS_UNI) &&
+                     ( ((gc->geom )[ax]==CG_CAR) ||
+                       ((gc->geom )[ax]==CG_CYL && ax>0) ||
+                       ((gc->geom )[ax]==CG_SPH && ax==2)) );
 
   ints ip = (ax==0) ? 1 : 0;
   ints jk=0;
   if (ax==1) jk=j;
   else if (ax==2) jk=k;
 
-  real *cm = gc.cm[ax];
-  real *cp = gc.cp[ax];
-  real *hm_ratio = gc.hm_ratio[ax];
-  real *hp_ratio = gc.hp_ratio[ax];
+  real *cm = (gc->cm)[ax];
+  real *cp = (gc->cp)[ax];
+  real *hm_ratio = (gc->hm_ratio)[ax];
+  real *hp_ratio = (gc->hp_ratio)[ax];
 
   real **_wc  = scr[0];
   real **_wc0 = scr[1];

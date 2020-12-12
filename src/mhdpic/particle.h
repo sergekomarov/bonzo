@@ -4,19 +4,19 @@
 
 typedef struct {
   real qm;     // charge-to-mass ratio
-  ints Np;     // number of particles
+  long Np;     // number of particles
 } SpcProp;
 
 // General particle properties.
 
 typedef struct {
 
-  ints ppc;           // number of particles per cell
-  ints Nprop;         // number of particle properties
-  ints Npmax;         // length of particle array
-  ints Np;            // number of active particles of all species
-  ints Ns;            // number of species
-  SpcProp *spc_props; // properties of different species
+  int ppc;            // number of particles per cell
+  int Nprop;          // number of particle properties
+  long Npmax;         // size of particle array
+  long Np;            // number of active particles of all species
+  int Ns;             // number of species
+  SpcProp *spc_props; // properties of particle species
 
 //#if MHDPIC
   //real c;           // effective speed of light
@@ -24,10 +24,10 @@ typedef struct {
   //real rho_cr;      // CR density
 //#endif
 
-} ParticleProp;
+} PrtProp;
 
 
-// Structure containing arrays of particle properties.
+// Arrays of particle properties.
 
 typedef struct {
 
@@ -44,7 +44,7 @@ typedef struct {
   real *g;    // relativistic gamma
 
   real *m;    // mass
-  ints *spc;  // specie
-  ints *id;   // particle ID
+  int *spc;   // specie
+  long *id;   // particle ID
 
-} ParticleData;
+} PrtData;

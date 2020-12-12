@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs_cy cimport *
-from bnz.coord.grid cimport *
-
+from bnz.coord.grid cimport GridCoord, GridData
+from bnz.particle.particle cimport PrtProp, PrtData
+from bnz.mhd.integrate cimport BnzIntegr
 
 # Particle boundary conditions.
 
-cdef class BnzSim
-
 # particle BC function pointer
-ctypedef void (*PrtBcFunc)(BnzSim)
+ctypedef void (*PrtBcFunc)(PrtData*,PrtProp*, GridData,GridCoord*, BnzIntegr)
 
-cdef class ParticleBC:
+cdef class PrtBC:
 
   # BC flags
   cdef int bc_flags[3][2]
@@ -20,9 +19,7 @@ cdef class ParticleBC:
   cdef PrtBcFunc prt_bc_funcs[3][2]
 
   # BC buffers
-  IF MPI:
-    cdef:
-      real2d sendbuf, recvbuf
-      ints recvbuf_size, sendbuf_size
+  real2d sendbuf, recvbuf
+  long recvbuf_size, sendbuf_size
 
-cdef void apply_bc_prt(BnzSim)
+  cdef void apply_prt_bc(self, PrtData*,PrtProp*, GridData,GridCoord*, BnzIntegr)

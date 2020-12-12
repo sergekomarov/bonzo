@@ -5,16 +5,16 @@
 
 // =============================================================================
 
-void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
+void cons2prim_1(real **w1, real **u1, int i1, int i2, real gam) {
 
   real w[NMODE];
   real u[NMODE];
 
 #pragma omp simd private(u, w)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODE; ++n)
-      u[n] = U1[n][i];
+    for (int n=0; n<NMODE; ++n)
+      u[n] = u1[n][i];
 
     //-----------------------
 
@@ -53,8 +53,8 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
     //-----------------------
 
-    for (ints n=0; n<NMODE; ++n)
-      W1[n][i] = w[n];
+    for (int n=0; n<NMODE; ++n)
+      w1[n][i] = w[n];
 
   }
 
@@ -63,17 +63,17 @@ void cons2prim_1(real **W1, real **U1, ints i1, ints i2, real gam) {
 
 // ================================================================================
 
-void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
+void prim2cons_1(real **u1, real **w1, int i1, int i2, real gam) {
 
   real w[NMODE];
   real u[NMODE];
   real gamm1i = 1./(gam-1.);
 
 #pragma omp simd private(u, w)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    for (ints n=0; n<NMODE; ++n)
-      w[n] = W1[n][i];
+    for (int n=0; n<NMODE; ++n)
+      w[n] = w1[n][i];
 
     //-----------------------
 
@@ -109,8 +109,8 @@ void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
     //-----------------------
 
-    for (ints n=0; n<NMODE; ++n)
-      U1[n][i] = u[n];
+    for (int n=0; n<NMODE; ++n)
+      u1[n][i] = u[n];
 
   }
 
@@ -119,13 +119,13 @@ void prim2cons_1(real **U1, real **W1, ints i1, ints i2, real gam) {
 
 // ==============================================================================
 
-void prim2char_1(real **vc, real **W1,
-                 ints i1, ints i2, real gam) {
+void prim2char_1(real **vc, real **w1,
+                 int i1, int i2, real gam) {
 
 #if MFIELD
 
 #pragma omp simd simdlen(SIMD_WIDTH)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
     real vc_rho = vc[RHO][i];
     real vc_vx  = vc[VX][i];
@@ -135,11 +135,11 @@ void prim2char_1(real **vc, real **W1,
     real vc_by  = vc[BY][i];
     real vc_bz  = vc[BZ][i];
 
-    real w_rho = W1[RHO][i];
-    real w_p   = W1[PR][i];
-    real w_bx  = W1[BX][i];
-    real w_by  = W1[BY][i];
-    real w_bz  = W1[BZ][i];
+    real w_rho = w1[RHO][i];
+    real w_p   = w1[PR][i];
+    real w_bx  = w1[BX][i];
+    real w_by  = w1[BY][i];
+    real w_bz  = w1[BZ][i];
 
     real rhoi = 1./w_rho;
 
@@ -232,10 +232,10 @@ void prim2char_1(real **vc, real **W1,
 #else
 
 #pragma omp simd simdlen(SIMD_WIDTH)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
-    real w_rho = W1[RHO][i];
-    real w_p = W1[PR][i];
+    real w_rho = w1[RHO][i];
+    real w_p = w1[PR][i];
 
     real vc_rho = vc[RHO][i];
     real vc_vx  = vc[VX][i];
@@ -261,13 +261,13 @@ void prim2char_1(real **vc, real **W1,
 
 // ============================================================================
 
-void char2prim_1(real **vc, real **W1,
-                 ints i1, ints i2, real gam) {
+void char2prim_1(real **vc, real **w1,
+                 int i1, int i2, real gam) {
 
 #if MFIELD
 
 #pragma omp simd simdlen(SIMD_WIDTH)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
     real vc_rho = vc[RHO][i];
     real vc_vx  = vc[VX][i];
@@ -277,11 +277,11 @@ void char2prim_1(real **vc, real **W1,
     real vc_by  = vc[BY][i];
     real vc_bz  = vc[BZ][i];
 
-    real w_rho = W1[RHO][i];
-    real w_p   = W1[PR][i];
-    real w_bx  = W1[BX][i];
-    real w_by  = W1[BY][i];
-    real w_bz  = W1[BZ][i];
+    real w_rho = w1[RHO][i];
+    real w_p   = w1[PR][i];
+    real w_bx  = w1[BX][i];
+    real w_by  = w1[BY][i];
+    real w_bz  = w1[BZ][i];
 
     real rhoi = 1./w_rho;
 
@@ -355,7 +355,7 @@ void char2prim_1(real **vc, real **W1,
 #else
 
 #pragma omp simd simdlen(SIMD_WIDTH)
-  for (ints i=i1; i<=i2; ++i) {
+  for (int i=i1; i<=i2; ++i) {
 
     real vc_rho = vc[RHO][i];
     real vc_vx  = vc[VX][i];
@@ -363,9 +363,9 @@ void char2prim_1(real **vc, real **W1,
     real vc_vz  = vc[VZ][i];
     real vc_p   = vc[PR][i];
 
-    real rhoi = 1./W1[RHO][i];
+    real rhoi = 1./w1[RHO][i];
 
-    real a2 = gam * rhoi * W1[PR][i];
+    real a2 = gam * rhoi * w1[PR][i];
     real a = SQRT(a2);
 
     vc[RHO][i] = vc_rho + vc_vx + vc_p;

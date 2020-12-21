@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from bnz.defs_cy cimport *
-from bnz.coord.grid cimport GridCoord
-
+from bnz.defs cimport *
+from bnz.coordinates.coord cimport GridCoord
 
 cdef void advance_b(real4d,real4d,real4d, GridCoord*, int*, real) nogil
 

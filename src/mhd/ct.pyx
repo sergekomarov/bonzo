@@ -7,9 +7,9 @@ from cython.parallel import prange, parallel, threadid
 from libc.stdlib cimport malloc, calloc, free
 from libc.stdio cimport printf
 
-from bnz.coord.coord_cy cimport get_face_area_x, get_face_area_y, get_face_area_z
-from bnz.coord.coord_cy cimport get_edge_len_x, get_edge_len_y, get_edge_len_z
-from bnz.coord.coord_cy cimport get_centr_len_x, get_centr_len_y, get_centr_len_z
+from bnz.coordinates.coord cimport get_face_area_x, get_face_area_y, get_face_area_z
+from bnz.coordinates.coord cimport get_edge_len_x, get_edge_len_y, get_edge_len_z
+from bnz.coordinates.coord cimport get_centr_len_x, get_centr_len_y, get_centr_len_z
 
 
 cdef void advance_b(real4d b1, real4d b0, real4d ee,
@@ -43,7 +43,7 @@ cdef void advance_b(real4d b1, real4d b0, real4d ee,
 
           b1[0,k,j,i] += dtda * (dsp * ee[1,k+1,j,i] - dsm * ee[1,k,j,i])
 
-
+  # can be parallelized if swap j and k
   for k in range(lims[4],lims[5]+1):
     for j in range(lims[2],lims[3]+1):
 
@@ -71,6 +71,7 @@ cdef void advance_b(real4d b1, real4d b0, real4d ee,
           b1[1,k,j,i] -= dtda * (dsp * ee[0,k+1,j,i] - dsm * ee[0,k,j,i])
 
 
+  # for k in prange(lims[4],lims[5]+2, num_threads=OMP_NT, nogil=True, schedule='dynamic'):
   for k in range(lims[4],lims[5]+2):
     for j in range(lims[2],lims[3]+1):
       for i in range(lims[0],lims[1]+1):
@@ -92,7 +93,7 @@ cdef void advance_b(real4d b1, real4d b0, real4d ee,
 
 # ---------------------------------------------------------------------------
 
-cdef void interp_b_field(real4d u, real4d b, GridCoord *gc, int *lims) nogil:
+cdef void interp_bc(real4d u, real4d b, GridCoord *gc, int *lims) nogil:
 
   # Interpolate magnetic field from cell faces to cell centers.
 
@@ -138,7 +139,7 @@ cdef void ec_from_prim(real4d ec, real4d w, int *lims) nogil:
   IF not D2D: jl,ju=0,0
   IF not D3D: kl,ku=0,0
 
-  for k in range(kl,ku+1):
+  for k in prange(kl,ku+1, num_threads=OMP_NT, nogil=True, schedule='dynamic'):
     for j in range(jl,ju+1):
       for i in range(il,iu+1):
 
@@ -355,91 +356,3 @@ cdef void interp_ee2(real4d ee, real4d ec,
 
         ELSE:
           ee[1,k,j,i] = fx[BZ,k,j,i]
-
-
-
-# IF D3D and D2D:
-#
-#   for k in range(lims[4],lims[5]+1):
-#     for j in range(lims[2],lims[3]+1):
-#       for i in range(lims[0],lims[1]+1):
-#
-#         dtdax = dt/da[0][k][j][i]
-#         dtday = dt/da[1][k][j][i]
-#         dtdaz = dt/da[2][k][j][i]
-#
-#         b1[0,k,j,i] = ( b0[0,k,j,i] + dtdax * (
-#             - (ds[2][k][j+1][i] * ee[2,k,j+1,i] - ds[2][k][j][i] * ee[2,k,j,i])
-#             + (ds[1][k+1][j][i] * ee[1,k+1,j,i] - ds[1][k][j][i] * ee[1,k,j,i]) ) )
-#
-#         b1[1,k,j,i] = ( b0[1,k,j,i] + dtday * (
-#             + (ds[2][k][j][i+1] * ee[2,k,j,i+1] - ds[2][k][j][i] * ee[2,k,j,i])
-#             - (ds[0][k+1][j][i] * ee[0,k+1,j,i] - ds[0][k][j][i] * ee[0,k,j,i]) ) )
-#
-#         b1[2,k,j,i] = ( b0[2,k,j,i] + dtdaz * (
-#             - (ds[1][k][j][i+1] * ee[1,k,j,i+1] - ds[1][k][j][i] * ee[1,k,j,i])
-#             + (ds[0][k][j+1][i] * ee[0,k,j+1,i] - ds[0][k][j][i] * ee[0,k,j,i]) ) )
-#
-#         if i==lims[1]:
-#           ip = i+1
-#           b1[0,k,j,ip] = ( b0[0,k,j,ip] + dtdax * (
-#               - (ds[2][k][j+1][ip] * ee[2,k,j+1,ip] - ds[2][k][j][ip] * ee[2,k,j,ip])
-#               + (ds[1][k+1][j][ip] * ee[1,k+1,j,ip] - ds[1][k][j][ip] * ee[1,k,j,ip]) ) )
-#
-#         if j==lims[3]:
-#           jp = j+1
-#           b1[1,k,jp,i] = ( b0[1,k,jp,i] + dtday * (
-#               + (ds[2][k][jp][i+1] * ee[2,k,jp,i+1] - ds[2][k][jp][i] * ee[2,k,jp,i])
-#               - (ds[0][k+1][jp][i] * ee[0,k+1,jp,i] - ds[0][k][jp][i] * ee[0,k,jp,i]) ) )
-#
-#         if k==lims[5]:
-#           kp = k+1
-#           b1[2,kp,j,i] = ( b0[2,kp,j,i] + dtdaz * (
-#               - (ds[1][kp][j][i+1] * ee[1,kp,j,i+1] - ds[1][kp][j][i] * ee[1,kp,j,i])
-#               + (ds[0][kp][j+1][i] * ee[0,kp,j+1,i] - ds[0][kp][j][i] * ee[0,kp,j,i]) ) )
-#
-# ELIF D2D:
-#
-#   for j in range(lims[2],lims[3]+1):
-#     for i in range(lims[0],lims[1]+1):
-#
-#       dtdax = dt/da[0][0][j][i]
-#       dtday = dt/da[1][0][j][i]
-#       dtdaz = dt/da[2][0][j][i]
-#
-#       b1[0,0,j,i] = ( b0[0,0,j,i] + dtdax * (
-#           - ds[2][0][j+1][i] * ee[2,0,j+1,i] + ds[2][0][j][i] * ee[2,0,j,i] ))
-#
-#       b1[1,0,j,i] = ( b0[1,0,j,i] + dtday * (
-#           + ds[2][0][j][i+1] * ee[2,0,j,i+1] - ds[2][0][j][i] * ee[2,0,j,i] ))
-#
-#       b1[2,0,j,i] = ( b0[2,0,j,i] + dtdaz * (
-#           - (ds[1][0][j][i+1] * ee[1,0,j,i+1] - ds[1][0][j][i] * ee[1,0,j,i])
-#           + (ds[0][0][j+1][i] * ee[0,0,j+1,i] - ds[0][0][j][i] * ee[0,0,j,i]) ) )
-#
-#       if i==lims[1]:
-#         ip = i+1
-#         b1[0,0,j,ip] = ( b0[0,0,j,ip] + dtdax * (
-#             - ds[2][0][j+1][ip] * ee[2,0,j+1,ip] + ds[2][0][j][ip] * ee[2,0,j,ip] ))
-#
-#       if j==lims[3]:
-#         jp = j+1
-#         b1[1,0,jp,i] = ( b0[1,0,jp,i] + dtday * (
-#             + ds[2][0][jp][i+1] * ee[2,0,jp,i+1] - ds[2][0][jp][i] * ee[2,0,jp,i] ))
-#
-# ELSE:
-#
-#   for i in range(lims[0],lims[1]+1):
-#
-#     dtday = dt/da[1][0][0][i]
-#     dtdaz = dt/da[2][0][0][i]
-#
-#     b1[0,0,0,i] = b0[0,0,0,i]
-#
-#     b1[1,0,0,i] = ( b0[1,0,0,i] + dtday * (
-#         + ds[2][0][0][i+1] * ee[2,0,0,i+1] - ds[2][0][0][i] * ee[2,0,0,i] ))
-#
-#     b1[2,0,0,i] = ( b0[2,0,0,i] + dtdaz * (
-#         - ds[1][0][0][i+1] * ee[1,0,0,i+1] + ds[1][0][0][i] * ee[1,0,0,i] ))
-#
-#     if i==lims[1]: b1[0,0,0,i+1] = b0[0,0,0,i+1]

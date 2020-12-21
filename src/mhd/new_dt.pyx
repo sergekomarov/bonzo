@@ -11,8 +11,8 @@ from cython.parallel import prange, parallel, threadid
 from libc.stdlib cimport malloc, calloc, free
 from libc.stdio cimport printf
 
-from bnz.utils cimport print_root
-from bnz.coord.coord_cy cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
+from bnz.util cimport print_root
+from bnz.coordinates.coord cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
 
 
 cdef real new_dt(real4d prim, GridCoord *gc, BnzIntegr integr):

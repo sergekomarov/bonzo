@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from bnz.defs_cy cimport *
-from bnz.coord.grid cimport GridCoord,GridData
-from bnz.mhd.integrate cimport BnzIntegr
+from bnz.defs cimport *
+from bnz.coordinates.grid cimport GridCoord,GridData
+from bnz.integrate.integrator cimport BnzIntegr
 
 # grid BC function pointer
 ctypedef void (*GridBcFunc)(GridData,GridCoord*, BnzIntegr, int1d)
 
 ctypedef void (*PackFunc)(GridData,GridCoord*, int1d, real1d, int,int)
 ctypedef void (*UnpackFunc)(GridData,GridCoord*, int1d, real1d, int,int)
-
-# Boundary condition class.
 
 cdef class GridBc:
 

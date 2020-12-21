@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from bnz.defs_cy cimport *
-from bnz.coord.grid cimport *
-from bnz.mhd.integrator cimport *
+from bnz.defs cimport *
+from bnz.coordinates.coord cimport GridCoord
+from bnz.integrate.integrator cimport BnzIntegr
 
 cdef void godunov_fluxes(real4d, real4d, real4d,
                          real4d, real4d, GridCoord*, int*,

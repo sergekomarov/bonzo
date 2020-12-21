@@ -11,7 +11,7 @@ from libc.math cimport sqrt,sin,cos,fabs,log,exp,pow, fabs,fmin,fmax
 from libc.stdlib cimport rand, RAND_MAX, srand
 
 from scipy.fftpack import ifftn
-from utils cimport rand01
+from util cimport rand01
 
 IF SPREC:
   np_real = np.float32
@@ -101,7 +101,6 @@ cdef np.ndarray[double, ndim=4] gen_sol2d(int Nx, int Ny,
   np.save('V.npy',V)
 
   return V
-
 
 
 # ---------------------------------------------------------------

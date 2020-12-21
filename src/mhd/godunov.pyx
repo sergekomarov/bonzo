@@ -8,16 +8,17 @@ from libc.math cimport isnan
 from libc.stdlib cimport calloc, free
 from libc.stdio cimport printf
 
-from bnz.utils cimport maxi, print_root, timediff
-from bnz.utils cimport swap_array_ptrs
-from bnz.utils cimport calloc_2d_array, free_2d_array
+from bnz.util cimport print_root, timediff
+from bnz.util cimport calloc_2d_array, free_2d_array, swap_array_ptrs
 
-from bnz.coord.coord_cy cimport get_cell_vol, get_face_area_x
-from bnz.coord.coord_cy cimport get_face_area_y, get_face_area_z
+from bnz.coordinates.coord cimport get_cell_vol, get_face_area_x
+from bnz.coordinates.coord cimport get_face_area_y, get_face_area_z
+from bnz.integrate.integrator cimport reconstr_const, reconstr_linear, reconstr_weno, reconstr_parab
+from bnz.integrate.integrator cimport ReconstrFunc
 
 
-cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
-                         real4d prim, real4d bf, GridCoord *gc, int *lims,
+cdef void godunov_fluxes(real4d flx_x, real4d flx_y, real4d flx_z,
+                         real4d prim, real4d bfld, GridCoord *gc, int *lims,
                          BnzIntegr integr, int order):
 
   # Calculate Godunov fluxes from conserved variables.
@@ -30,9 +31,9 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
     # array of primitive variables used as input to reconstruction
     real ***prim1
     # Godunov flux
-    real **flux1
+    real **flx1
     # interface magnetic field
-    real *bf1
+    real *bfld1
     # left/right interface states
     real **wl
     real **wl_
@@ -72,8 +73,8 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
     rcn_scr = integr.scratch.w_rcn[thread_id]
 
     prim1 = <real ***>calloc_2d_array(2*order+1, NMODE, sizeof(real*))
-    flux1 = <real **>calloc(NMODE, sizeof(real*))
-    bf1 = NULL
+    flx1 = <real **>calloc(NMODE, sizeof(real*))
+    bfld1 = NULL
 
     # print_root(rank, "\nGodunov fluxes along X... ")
     # gettimeofday(&tstart, NULL)
@@ -101,14 +102,14 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
         # reconstruction sets wl[i+1], wr[i] => need to start from il-1
         reconstr_func(wl, wr, prim1, rcn_scr, gc,
                       XAX, il-1,iu+1, j,k,
-                      integr.charact_proj, integr.gam)
+                      integr.char_proj, integr.gam)
 
         # shallow slice of x-flux array
-        for n in range(NMODE): flux1[n] = &flux_x[varsx[n],k,j,0]
+        for n in range(NMODE): flx1[n] = &flx_x[varsx[n],k,j,0]
 
         # calulate Godunov x-flux
-        IF MFIELD: bf1 = &(bf[0,k,j,0])
-        integr.rsolver_func(flux1, wl,wr, bf1, il,iu+1, integr.gam)
+        IF MFIELD: bfld1 = &(bfld[0,k,j,0])
+        integr.rsolver_func(flx1, wl,wr, bfld1, il,iu+1, integr.gam)
 
     # gettimeofday(&tstop, NULL)
     # print_root(rank, "%.1f ms\n", timediff(tstart,tstop))
@@ -139,7 +140,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
 
         reconstr_func(wl, wr, prim1, rcn_scr, gc,
                       YAX, ib,ie, jl-1,k,
-                      integr.charact_proj, integr.gam)
+                      integr.char_proj, integr.gam)
 
         for j in range(jl,ju+2):
 
@@ -149,12 +150,12 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
 
           reconstr_func(wl_, wr, prim1, rcn_scr,
                         YAX, ib,ie, j,k,
-                        integr.charact_proj, integr.gam)
+                        integr.char_proj, integr.gam)
 
-          for n in range(NMODE): flux1[n] = &flux_y[varsy[n],k,j,0]
+          for n in range(NMODE): flx1[n] = &flx_y[varsy[n],k,j,0]
 
-          IF MFIELD: bf1 = &(bf[1,k,j,0])
-          integr.rsolver_func(flux1, wl,wr, bf1, ib,ie, integr.gam)
+          IF MFIELD: bfld1 = &(bfld[1,k,j,0])
+          integr.rsolver_func(flx1, wl,wr, bfld1, ib,ie, integr.gam)
 
           swap_array_ptrs(wl,wl_)
 
@@ -183,7 +184,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
 
         reconstr_func(wl, wr, prim1, rcn_scr, gc,
                       ZAX, ib,ie, j,kl-1,
-                      integr.charact_proj, integr.gam)
+                      integr.char_proj, integr.gam)
 
         for k in range(kl,ku+2):
 
@@ -193,12 +194,12 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
 
           reconstr_func(wl_,wr, prim1, rcn_scr, gc,
                         ZAX, ib,ie, j,k,
-                        integr.charact_proj, integr.gam)
+                        integr.char_proj, integr.gam)
 
-          for n in range(NMODE): flux1[n] = &flux_z[varsz[n],k,j,0]
+          for n in range(NMODE): flx1[n] = &flx_z[varsz[n],k,j,0]
 
-          IF MFIELD: bf1 = &(bf[2,k,j,0])
-          integr.rsolver_func(flux1, wl,wr, bf1, ib,ie, integr.gam)
+          IF MFIELD: bfld1 = &(bfld[2,k,j,0])
+          integr.rsolver_func(flx1, wl,wr, bfld1, ib,ie, integr.gam)
 
           swap_array_ptrs(wl,wl_)
 
@@ -206,7 +207,7 @@ cdef void godunov_fluxes(real4d flux_x, real4d flux_y, real4d flux_z,
         # print_root(rank, "%.1f ms\n", timediff(tstart,tstop))
 
       free_2d_array(prim1)
-      free(flux1)
+      free(flx1)
 
 
 # ----------------------------------------------------------------------------

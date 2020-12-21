@@ -3,17 +3,9 @@
 import numpy as np
 cimport numpy as np
 from cython.parallel import prange, parallel
+from util_bc cimport *
 
-from utils_bc cimport *
-
-IF MPI:
-  IF SPREC:
-    mpi_real = mpi.FLOAT
-  ELSE:
-    mpi_real = mpi.DOUBLE
-
-
-# ==============================================================================
+# ------------------------------------------------------------------------------
 
 cdef list get_bvar_fld_list(GridData gd, int1d bvars):
 
@@ -28,7 +20,7 @@ cdef list get_bvar_fld_list(GridData gd, int1d bvars):
       flds.append(gd.prim[bvar,...])
     elif bvar<NMODE+3:
       # add face-centered magnetic field
-      flds.append(gd.bf[bvar-NMODE,...])
+      flds.append(gd.bfld[bvar-NMODE,...])
     else:
       # add particle feedback force
       flds.append(gd.fcoup[bvar-(NMODE+3),...])
@@ -37,11 +29,11 @@ cdef list get_bvar_fld_list(GridData gd, int1d bvars):
   return flds
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 
 # Periodic MHD BC.
 
-cdef void x1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void x1_grid_bc_periodic(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, i1=gc.i1, i2=gc.i2
@@ -50,10 +42,10 @@ cdef void x1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int
   flds = get_bvar_fld_list(gd, bvars)
 
   for n in range(nbvar):
-    copy_layer_x(flds[n], gc.i1-gc.ng, gc.i2-gc.ng+1, gc.ng, gc.Ntot)
+    copy_layer_x(flds[n], i1-ng, i2-ng+1, ng, gc.Ntot)
 
 
-cdef void x2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void x2_grid_bc_periodic(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, i1=gc.i1, i2=gc.i2
@@ -65,7 +57,7 @@ cdef void x2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int
     copy_layer_x(flds[n], i2+1, i1, ng, gc.Ntot)
 
 
-cdef void y1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void y1_grid_bc_periodic(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, j1=gc.j1, j2=gc.j2
@@ -77,7 +69,7 @@ cdef void y1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int
     copy_layer_y(flds[n], j1-ng, j2-ng+1, ng, gc.Ntot)
 
 
-cdef void y2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void y2_grid_bc_periodic(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, j1=gc.j1, j2=gc.j2
@@ -89,7 +81,7 @@ cdef void y2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int
     copy_layer_y(flds[n], j2+1, j1, ng, gc.Ntot)
 
 
-cdef void z1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void z1_grid_bc_periodic(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, k1=gc.k1, k2=gc.k2
@@ -101,7 +93,7 @@ cdef void z1_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int
     copy_layer_z(flds[n], k1-ng, k2-ng+1, ng, gc.Ntot)
 
 
-cdef void z2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void z2_grid_bc_periodic(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, k1=gc.k1, k2=gc.k2
@@ -113,12 +105,11 @@ cdef void z2_grid_bc_periodic(GridData gd, GridCoord *gc,  BnzIntegr integr, int
     copy_layer_z(flds[n], k2+1, k1, ng, gc.Ntot)
 
 
-
-# ==========================================================================
+# ------------------------------------------------------------------------------
 
 # Outflow BC.
 
-cdef void x1_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
+cdef void x1_grid_bc_outflow(GridData gd, GridCoord *gc, BnzIntegr integr, int1d bvars):
 
   cdef:
     int n, ng=gc.ng, i1=gc.i1
@@ -205,8 +196,7 @@ cdef void z2_grid_bc_outflow(GridData gd, GridCoord *gc,  BnzIntegr integr, int1
     #   prolong_z(flds[n], 1, k2+2, ng-1, gc.Ntot)
 
 
-
-# ==========================================================================
+# ------------------------------------------------------------------------------
 
 # Reflective MHD BC.
 
@@ -340,7 +330,7 @@ cdef void z2_grid_bc_reflect(GridData gd, GridCoord *gc,  BnzIntegr integr, int1
 
 
 
-# =========================================================================
+# ------------------------------------------------------------------------------
 
 cdef void r1_grid_bc_sph(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d bvars):
 
@@ -426,11 +416,12 @@ cdef void th2_grid_bc_sph(GridData gd, GridCoord *gc,  BnzIntegr integr, int1d b
 
 
 
-# =========================================================
+# ==============================================================================
 
 IF MPI:
 
-  cdef void pack_grid_all(GridData gd, GridCoord *gc,  int1d bvars, real1d buf, int ax, int side):
+  cdef void pack_grid_all(GridData gd, GridCoord *gc, int1d bvars,
+                          real1d buf, int ax, int side):
 
     cdef:
       int n
@@ -442,7 +433,7 @@ IF MPI:
 
     flds = get_bvar_fld_list(gd, bvars)
 
-    pack_order = np.ones(3)
+    pack_order = np.ones(3, dtype=np.intc)
     sign=1
     offset=0
 
@@ -460,9 +451,9 @@ IF MPI:
         for n in range(nbvar):
 
           if bvars[n]==BXF:
-            lims = np.array([i1+1,i1+ng, 0,ny-1, 0,nz-1])
+            lims = np.array([i1+1,i1+ng, 0,ny-1, 0,nz-1], dtype=np.intc)
           else:
-            lims = np.array([i1,i1+ng-1, 0,ny-1, 0,nz-1])
+            lims = np.array([i1,i1+ng-1, 0,ny-1, 0,nz-1], dtype=np.intc)
 
           # reflect vector r- and theta-components
           if ((bvars[n]==VX or bvars[n]==BXC or bvars[n]==BXF or bvars[n]==FCX) or
@@ -484,9 +475,9 @@ IF MPI:
         for n in range(nbvar):
 
           if bvars[n]==BYF:
-            lims = np.array([0,nx-1, j1+1,j1+ng, 0,nz-1])
+            lims = np.array([0,nx-1, j1+1,j1+ng, 0,nz-1], dtype=np.intc)
           else:
-            lims = np.array([0,nx-1, j1,j1+ng-1, 0,nz-1])
+            lims = np.array([0,nx-1, j1,j1+ng-1, 0,nz-1], dtype=np.intc)
 
           # reflect vector theta-components
           if bvars[n]==VY or bvars[n]==BYC or bvars[n]==BYF or bvars[n]==FCY:
@@ -508,9 +499,9 @@ IF MPI:
 
           if bvars[n]==BYF:
             # need only ng-1 layers of ghosts
-            lims = np.array([0,nx-1, j2-ng+2,j2, 0,nz-1])
+            lims = np.array([0,nx-1, j2-ng+2,j2, 0,nz-1], dtype=np.intc)
           else:
-            lims = np.array([0,nx-1, j2-ng+1,j2, 0,nz-1])
+            lims = np.array([0,nx-1, j2-ng+1,j2, 0,nz-1], dtype=np.intc)
 
           if bvars[n]==VY or bvars[n]==BYC or bvars[n]==BYF or bvars[n]==FCY:
             sign=-1
@@ -532,9 +523,9 @@ IF MPI:
         for n in range(nbvar):
 
           if bvars[n]==BXF:
-            lims = np.array([i1+1,i1+ng, 0,ny-1, 0,nz-1])
+            lims = np.array([i1+1,i1+ng, 0,ny-1, 0,nz-1], dtype=np.intc)
           else:
-            lims = np.array([i1,i1+ng-1, 0,ny-1, 0,nz-1])
+            lims = np.array([i1,i1+ng-1, 0,ny-1, 0,nz-1], dtype=np.intc)
 
           # reflect vector r-components
           if bvars[n]==VX or bvars[n]==BXC or bvars[n]==BXF or bvars[n]==FCX:
@@ -549,13 +540,13 @@ IF MPI:
     # Now treat ordinary MPI boundaries.
 
     if side==0:
-      if ax==0:   lims = np.array([i1,i1+ng-1, 0,ny-1, 0,nz-1])
-      elif ax==1: lims = np.array([0,nx-1, j1,j1+ng-1, 0,nz-1])
-      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k1,k1+ng-1])
+      if ax==0:   lims = np.array([i1,i1+ng-1, 0,ny-1, 0,nz-1], dtype=np.intc)
+      elif ax==1: lims = np.array([0,nx-1, j1,j1+ng-1, 0,nz-1], dtype=np.intc)
+      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k1,k1+ng-1], dtype=np.intc)
     elif side==1:
-      if ax==0:   lims = np.array([i2-ng+1,i2, 0,ny-1, 0,nz-1])
-      elif ax==1: lims = np.array([0,nx-1, j2-ng+1,j2, 0,nz-1])
-      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k2-ng+1,k2])
+      if ax==0:   lims = np.array([i2-ng+1,i2, 0,ny-1, 0,nz-1], dtype=np.intc)
+      elif ax==1: lims = np.array([0,nx-1, j2-ng+1,j2, 0,nz-1], dtype=np.intc)
+      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k2-ng+1,k2], dtype=np.intc)
 
     for n in range(nbvar):
       pack(flds[n], buf, &offset, lims, pack_order, 1)
@@ -565,11 +556,12 @@ IF MPI:
 
   # -----------------------------------------------------------------------------
 
-  cdef void unpack_grid_all(GridData gd, GridCoord *gc,  int1d bvars, real1d buf, int ax, int side):
+  cdef void unpack_grid_all(GridData gd, GridCoord *gc,  int1d bvars,
+                            real1d buf, int ax, int side):
 
     cdef:
       int n
-      long offset=0
+      long offset
       int nx=gc.Ntot[0], ny=gc.Ntot[1], nz=gc.Ntot[2], ng=gc.ng
       int i1=gc.i1, i2=gc.i2, j1=gc.j1, j2=gc.j2, k1=gc.k1, k2=gc.k2
       int nbvar = bvars.size
@@ -588,9 +580,9 @@ IF MPI:
         for n in range(nbvar):
 
           if bvars[n]==BYF:
-            lims = np.array([0,nx-1, j2+2,j2+ng, 0,nz-1])
+            lims = np.array([0,nx-1, j2+2,j2+ng, 0,nz-1], dtype=np.intc)
           else:
-            lims = np.array([0,nx-1, j2+1,j2+ng, 0,nz-1])
+            lims = np.array([0,nx-1, j2+1,j2+ng, 0,nz-1], dtype=np.intc)
 
           unpack(flds[n], buf, &offset, lims)
 
@@ -599,13 +591,13 @@ IF MPI:
     # Now treat ordinary MPI boundaries.
 
     if side==0:
-      if ax==0:   lims = np.array([i1-ng,i1-1, 0,ny-1, 0,nz-1])
-      elif ax==1: lims = np.array([0,nx-1, j1-ng,j1-1, 0,nz-1])
-      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k1-ng,k1-1])
+      if ax==0:   lims = np.array([i1-ng,i1-1, 0,ny-1, 0,nz-1], dtype=np.intc)
+      elif ax==1: lims = np.array([0,nx-1, j1-ng,j1-1, 0,nz-1], dtype=np.intc)
+      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k1-ng,k1-1], dtype=np.intc)
     elif side==1:
-      if ax==0:   lims = np.array([i2+1,i2+ng, 0,ny-1, 0,nz-1])
-      elif ax==1: lims = np.array([0,nx-1, j2+1,j2+ng, 0,nz-1])
-      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k2+1,k2+ng])
+      if ax==0:   lims = np.array([i2+1,i2+ng, 0,ny-1, 0,nz-1], dtype=np.intc)
+      elif ax==1: lims = np.array([0,nx-1, j2+1,j2+ng, 0,nz-1], dtype=np.intc)
+      elif ax==2: lims = np.array([0,nx-1, 0,ny-1, k2+1,k2+ng], dtype=np.intc)
 
     for n in range(nbvar):
       unpack(flds[n], buf, &offset, lims)

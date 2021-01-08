@@ -29,7 +29,7 @@ python setup.py --help
 ```
 python setup.py build_ext --inplace --problem=problem_name [options]
 ```
-``problem_name`` corresponds to the name of the chosen problem generator found in the ``problem`` directory
+``problem_name`` corresponds to the name of the chosen problem generator found in the ``src/problem`` directory
 
 ## Running
 

@@ -45,4 +45,4 @@ cp config.cfg user_dir
 ```
 python main.py ./user_dir
 ```
-4) Output is written to the ``out`` directory in the user folder, restart files saved in ``rst``.
+4) Output is written to ``user_dir/out``, restart files saved in ``user_dir/rst``.

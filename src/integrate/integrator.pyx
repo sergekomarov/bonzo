@@ -7,11 +7,11 @@ from bnz.utils cimport calloc_3d_array, calloc_4d_array, free_3d_array
 from bnz.io.read_config import read_param
 from bnz.problem.problem cimport set_phys_funcs_user
 
-cimport ct
-cimport godunov
+cimport bnz.mhd.eos
+cimport bnz.mhd.ct
+cimport bnz.mhd.godunov
 cimport diagnostics
 cimport new_dt
-cimport eos
 cimport bnz.srcterms.gravity as gravity
 cimport bnz.srcterms.turb_driv as turb_driv
 
@@ -146,7 +146,7 @@ cdef class BnzIntegr:
       gettimeofday(&tstop, NULL)
       print_root("%.1f ms\n", timediff(tstart,tstop))
 
-    #--------------------
+    #--------------------------------------------------
 
     if self.turb_driv.f0 != 0.:
 
@@ -194,64 +194,19 @@ cdef class BnzIntegr:
       print_root(rank, "%.1f ms\n", timediff(tstart,tstop))
 
 
-
   # ----------------------------------------------------------------------------
 
   cdef void new_dt_diag(self, real4d prim, GridCoord *gc):
 
-    cdef timeval tstart, tstop
-
-    print_root("set new dt...\n")
-    gettimeofday(&tstart, NULL)
-
     self.dt = new_dt.new_dt(prim, gc, self)
-
-    gettimeofday(&tstop, NULL)
-    print_root("dt = %f, done in %.1f ms\n\n", self.dt, timediff(tstart,tstop))
-
-  # ----------------------------------------------------------------------------
-
-  cdef void cons2prim_diag(self, real4d prim, real4d cons, int *lims):
-
-    cdef timeval tstart, tstop
-
-    print_root("convert to primitive variables... ")
-    gettimeofday(&tstart, NULL)
-
-    eos_cy.cons2prim_3(prim, cons, lims, self.gam)
-
-    gettimeofday(&tstop, NULL)
-    print_root("%.1f ms\n", timediff(tstart,tstop))
-
-  # ----------------------------------------------------------------------------
-
-  cdef void prim2cons_diag(self, real4d cons, real4d prim, int *lims):
-
-    cdef timeval tstart, tstop
-
-    print_root("convert to conserved variables... ")
-    gettimeofday(&tstart, NULL)
-
-    eos_cy.prim2cons_3(cons, prim, lims, self.gam)
-
-    gettimeofday(&tstop, NULL)
-    print_root("%.1f ms\n", timediff(tstart,tstop))
 
   # ----------------------------------------------------------------------------
 
   cdef void diffuse_diag(self, real4d prim, real4d bf, BnzSim sim):
 
-    cdef timeval tstart, tstop
-
-
-    print_root(rank, "diffusion... ")
-    gettimeofday(&tstart, NULL)
-
     # in primitive variables
     diffuse.diffuse(prim, bf, sim)
 
-    gettimeofday(&tstop, NULL)
-    print_root(rank, "%.1f ms\n", timediff(tstart,tstop))
 
   # ----------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@ from cython.parallel import prange, parallel, threadid
 
 from libc.stdio cimport printf
 from libc.stdlib cimport malloc, calloc, free
+from bnz.util cimport print_root
 
 # ADD LAPLACIANS AND CHECK FLOORS
 
@@ -15,6 +16,11 @@ cdef void cons2prim_3(real4d w, real4d u, int lims[6], real gam) nogil:
     int j,k,n
     real **u1
     real **w1
+
+  IF DIAGNOSE:
+    cdef timeval tstart, tstop
+    print_root("convert to primitive variables... ")
+    gettimeofday(&tstart, NULL)
 
   with nogil, parallel(num_threads=OMP_NT):
 
@@ -33,6 +39,10 @@ cdef void cons2prim_3(real4d w, real4d u, int lims[6], real gam) nogil:
     free(u1)
     free(w1)
 
+  IF DIAGNOSE:
+    gettimeofday(&tstop, NULL)
+    print_root("%.1f ms\n", timediff(tstart,tstop))
+
 
 cdef void prim2cons_3(real4d u, real4d w, int lims[6], real gam) nogil:
 
@@ -40,6 +50,11 @@ cdef void prim2cons_3(real4d u, real4d w, int lims[6], real gam) nogil:
     int j,k,n
     real **u1
     real **w1
+
+  IF DIAGNOSE:
+    cdef timeval tstart, tstop
+    print_root("convert to conserved variables... ")
+    gettimeofday(&tstart, NULL)
 
   with nogil, parallel(num_threads=OMP_NT):
 
@@ -57,3 +72,7 @@ cdef void prim2cons_3(real4d u, real4d w, int lims[6], real gam) nogil:
 
     free(u1)
     free(w1)
+
+  IF DIAGNOSE:
+    gettimeofday(&tstop, NULL)
+    print_root("%.1f ms\n", timediff(tstart,tstop))

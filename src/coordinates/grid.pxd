@@ -32,6 +32,9 @@ cdef class BnzGrid:
 
   cdef str usr_dir       # user directory, contains config file
 
+  cdef void cons2prim(self, int*, real)
+  cdef void prim2cons(self, int*, real)
+
   cdef void apply_grid_bc(self, BnzIntegr, int1d)
   IF MHDPIC: cdef void apply_prt_bc(self, BnzIntegr)
 

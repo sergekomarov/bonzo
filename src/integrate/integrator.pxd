@@ -3,6 +3,9 @@
 from bnz.defs cimport *
 from bnz.coordinates.coord cimport GridCoord
 
+# -----------------------------------------------------------------------------
+
+# Import C functions used for reconstruction and calculation of Godunov fluxes.
 
 cdef extern from "reconstr_c.h" nogil:
   void reconstr_const(real**, real**, real***, real ***,
@@ -41,7 +44,6 @@ IF CGL:
   cdef extern from "fluxes_c.h" nogil:
     void hlla_flux(real**, real**, real**, real*, int,int, real)
 
-
 # -----------------------------------------------------------------
 
 # Identifiers.
@@ -66,22 +68,20 @@ ctypedef enum Reconstr:
   RCN_WENO
   RCN_PARAB
 
+# -----------------------------------------------------------------
 
 # Function pointers.
 
-# function pointer to Riemann solver
+# pointer to Riemann solver
 ctypedef void (*RSolverFunc)(
             real**, real**, real**, real*,   # &flux, wl, wr, bx
             int, int,                        # start/end x-indices
             real) nogil                      # gas gamma
 
-# pointer to limiter function
-# ctypedef real (*LimiterFunc)(real, real) nogil
-
 # pointer to reconstruction function
 ctypedef void (*ReconstrFunc)(
-            real**, real**,     # return wR(i-1/2), wL(i+1/2)
-            real***,            # array of variables along x-axis
+            real**, real**,     # return reconstructed wR(i-1/2) and wL(i+1/2)
+            real***,            # array of primitive variables along x-axis
             real***,            # scratch arrays
             int,                # orientation of cell interfaces
             int,int,            # start/end x-indices
@@ -90,15 +90,16 @@ ctypedef void (*ReconstrFunc)(
             real                # gas gamma
             ) nogil
 
+# -----------------------------------------------------------------
 
-# Array structures used by the integrator.
+# Arrays used by the integrator.
 
 cdef class IntegrData:
 
   cdef:
 
-    real4d efldc       # cell-centered electric field
-    real4d eflde       # edge-centered electric field
+    real4d efldc    # cell-centered electric field
+    real4d eflde    # edge-centered electric field
 
     real4d flx_x    # Godunov fluxes
     real4d flx_y
@@ -107,11 +108,10 @@ cdef class IntegrData:
     real4d cons_s   # predictor-step arrays of cell-centered conserved variables
     real4d cons_ss
 
-    real4d bfld_s     # predictor-step arrays of face-centered magnetic field
+    real4d bfld_s   # predictor-step arrays of face-centered magnetic field
     real4d bfld_ss
 
-
-# Scatch arrays used by reconstruction and Riemann solver.
+# Scatch arrays used by reconstruction functions and Riemann solver.
 
 cdef class IntegrScratch:
 
@@ -120,7 +120,6 @@ cdef class IntegrScratch:
     real ***wl
     real ***wr
     real ***wl_
-
 
 # Integrator class.
 
@@ -143,7 +142,7 @@ cdef class BnzIntegr:
     # current timestep
     real dt
 
-    # maximum time
+    # length of the simulation
     real tmax
 
   cdef:
@@ -173,9 +172,9 @@ cdef class BnzIntegr:
 
   cdef:
     real gam      # gas gamma
-    real sol      # effective speed of light
-    real q_mc     # charge-to-mass ratio of CRs relative to thermal ions
-    real rho_cr   # CR density
+    real sol      # effective speed of light (MHDPIC)
+    real q_mc     # charge-to-mass ratio of CRs relative to thermal ions (MHDPIC)
+    real rho_cr   # CR density (MHDPIC)
 
 
 # # function pointer to gravitational potential

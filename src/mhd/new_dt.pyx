@@ -31,6 +31,11 @@ cdef real new_dt(real4d prim, GridCoord *gc, BnzIntegr integr):
     real cds
     real cdsmax=0, b2max=0
 
+  IF DIAGNOSE:
+    cdef timeval tstart, tstop
+    print_root("set new dt...\n")
+    gettimeofday(&tstart, NULL)
+
   cdef:
     real1d cdsmaxloc=np.zeros(OMP_NT)
     real1d b2maxloc=np.zeros(OMP_NT)
@@ -41,7 +46,6 @@ cdef real new_dt(real4d prim, GridCoord *gc, BnzIntegr integr):
       mpi.Comm comm = mpi.COMM_WORLD
       double[::1] var     = np.empty(1, dtype='f8')
       double[::1] var_max = np.empty(1, dtype='f8')
-
 
   with nogil, parallel(num_threads=OMP_NT):
 
@@ -123,5 +127,9 @@ cdef real new_dt(real4d prim, GridCoord *gc, BnzIntegr integr):
 
   IF MHDPIC: dt = FMIN(dtmhd, dtp)
   ELSE: dt = dtmhd
+
+  IF DIAGNOSE:
+    gettimeofday(&tstop, NULL)
+    print_root("dt = %f, done in %.1f ms\n\n", dt, timediff(tstart,tstop))
 
   return dt

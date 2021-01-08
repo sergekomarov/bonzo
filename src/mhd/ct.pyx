@@ -88,7 +88,7 @@ cdef void advance_b(real4d b1, real4d b0, real4d ee,
           dsm = get_edge_len_x(gc,i,j, k)
           dsp = get_edge_len_x(gc,i,j+1,k)
 
-            b1[2,k,j,i] += dtda * (dsp * ee[0,k,j+1,i] - dsm * ee[0,k,j,i])
+          b1[2,k,j,i] += dtda * (dsp * ee[0,k,j+1,i] - dsm * ee[0,k,j,i])
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from libc.stdlib cimport free, calloc
 from bnz.util cimport free_2d_array, free_3d_array, print_root
 from coord cimport init_coord, free_coord_data
 from interpolate cimport set_interp_coeff
+cimport bnz.mhd.eos as eos
 
 from bnz.io.read_config import read_param
 from hilbertcurve import HilbertCurve
@@ -83,6 +84,14 @@ cdef class BnzGrid:
   def __dealloc__(self):
 
     free_coord_data(self.coord)
+
+  cdef void cons2prim(self, int *lims, real gam):
+
+    eos.cons2prim_3(self.data.prim, self.data.cons, lims, gam)
+
+  cdef void prim2cons(self, int *lims, real gam):
+
+    eos.prim2cons_3(self.data.cons, self.data.prim, lims, gam)
 
   cdef void apply_grid_bc(self, BnzIntegr integr, int1d bvars):
     self.bc.apply_grid_bc(self.data,self.coord, integr, bvars)

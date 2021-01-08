@@ -4,26 +4,28 @@ Grid-based MHD code for plasma modelling.
 
 Based on the following papers with modifications:
 1) Van-Leer integrator: 
-"A simple unsplit Godunov method for multidimensional MHD" by J. Stone, T. Gardiner, 2009
+"A simple unsplit Godunov method for multidimensional MHD" by J. Stone and  T. Gardiner (2009)
 2) 3rd-order Runge-Kutta integrator:
-"
+"Pluto: a Numerocal Code for Computational Astrophysics" by A. Mignone et al. (2007)
 3) Implementation of non-Cartesian geometries:
-4) Diffusion solver based on ... super-time-stepping:
+"High-order conservative reconstruction schemes for finite volume methods in cylindrical and spherical coordinates" by A. Mignone (2014)
+4) Diffusion solver based on super-time-stepping:
+"A stabilized Runge-Kutta-Legendre method for explicit super-time-stepping of parabolic and mixed equations" by C. Meyer et al. (2014)
 
 ## Prerequisites
 
 1) Python 3
 2) Cython 3
-3) optional (parallelization): MPI (tested with OpenMPI and Intel MPI) + mpi4py
-4) optional (output file format): HDF5 + h5py, necessary with MPI
+3) Optional (parallelization): MPI (tested with OpenMPI and Intel MPI) + mpi4py
+4) Optional (output file format): HDF5 + h5py, necessary with MPI
 
 ## Compilation
 
-1) see available compilation options
+1) See available compilation options:
 ```
 python setup.py --help 
 ```
-2) compile
+2) Compile:
 ```
 python setup.py build_ext --inplace --problem=[problem_name] [options]
 ```
@@ -31,16 +33,16 @@ python setup.py build_ext --inplace --problem=[problem_name] [options]
 
 ## Running
 
-1) create a user directory in the root folder
+1) Create a user directory in the root folder:
 ```
-makedir [user_folder]
+mkdir [user_folder]
 ```
-2) place a configuration file (example provided in the root folder) in the user folder
+2) Place a configuration file (example provided in the root folder) in the user folder:
 ```
 cp config.cfg [user_folder]
 ```
-3) run 
+3) Run: 
 ```
 python main.py ./[user_folder]
 ```
-4) the output will be written to the "out" directory in the user folder, restart files saved in "rst"
+4) The output will be written to the "out" directory in the user folder, restart files saved in "rst".

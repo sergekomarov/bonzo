@@ -526,6 +526,8 @@ IF MPI:
     n = pp.Np
     i=0
 
+    # FIX COORDINATES
+
     while i < recvbuf_size:
 
       x = recvbuf[0,i] % lenx

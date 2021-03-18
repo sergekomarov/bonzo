@@ -53,7 +53,7 @@ cdef extern from "coord_c.h" nogil:
     int size_tot        # total number of blocks
     int ***ranks        # 3D array of grid ranks
     int nbr_ranks[3][2] # ranks of neighboring grids
-    # nbr_ids[axis,L(0)/R(1)]
+    # nbr_ranks[axis,L(0)/R(1)]
 
     # Auxilary geometric coefficients to reduce amount of calculations:
 
@@ -65,13 +65,13 @@ cdef extern from "coord_c.h" nogil:
     real *szyf
     real *szyv
 
-    # used in parabolic reconstruction (Mignone paper)
-    real **hp_ratio
-    real **hm_ratio
-
-    # interpolation coefficients (Mignone paper)
-    real ***cm
-    real ***cp
+    # # used in parabolic reconstruction (Mignone paper)
+    # real **hp_ratio
+    # real **hm_ratio
+    #
+    # # interpolation coefficients (Mignone paper)
+    # real ***cm
+    # real ***cp
 
     # used to calculate cell volumes, areas, and lengths
     real *rinv_mean
@@ -88,8 +88,8 @@ cdef extern from "coord_c.h" nogil:
     # Scratch arrays:
 
     # used to calculate Laplacians of grid arrays
-    real **lapl_tmp_xy1
-    real **lapl_tmp_xy2
+    # real **lapl_tmp_xy1
+    # real **lapl_tmp_xy2
 
     # # used by reconstruction routines
     # real **rcn_scr1
@@ -99,31 +99,35 @@ cdef extern from "coord_c.h" nogil:
     # real **rcn_scr5
     # real **rcn_scr6
 
-cdef extern from "coord_c.h" nogil:
+# cdef extern from "coord_c.h" nogil:
+#
+#   void lapl_perp1(real*,real*,real*,real*, real*,real*, real, int)
+#   void lapl_perp2(real*,real*,real*, real, int)
+#   void copy1d(real*,real*, int)
 
-  void lapl_perp1(real*,real*,real*,real*, real*,real*, real, int)
-  void lapl_perp2(real*,real*,real*, real, int)
-  void copy1d(real*,real*, int)
 
+# from bnz.bc.grid_bc cimport GridBC
+cdef class GridBC
 
-# from bnz.bc.grid_bc cimport GridBc
-cdef class GridBc
-
-cdef void init_coord(GridCoord*, GridBc, str)
+cdef void init_coord(GridCoord*, GridBC, str)
 cdef void free_coord_data(GridCoord*)
 
 cdef void add_geom_src_terms(real4d,real4d, real4d,real4d,real4d,
                              GridCoord*, int*, real) nogil
 
-cdef void add_laplacian(GridCoord*, real3d, real) nogil
+# cdef void add_laplacian(GridCoord*, real3d, real) nogil
 
 cdef real get_edge_len_x(GridCoord*, int,int,int) nogil
 cdef real get_edge_len_y(GridCoord*, int,int,int) nogil
 cdef real get_edge_len_z(GridCoord*, int,int,int) nogil
 
 cdef real get_centr_len_x(GridCoord*, int,int,int) nogil
-cdef real get_centr_len_x(GridCoord*, int,int,int) nogil
-cdef real get_centr_len_x(GridCoord*, int,int,int) nogil
+cdef real get_centr_len_y(GridCoord*, int,int,int) nogil
+cdef real get_centr_len_z(GridCoord*, int,int,int) nogil
+
+cdef real get_cell_width_x(GridCoord*, int,int,int) nogil
+cdef real get_cell_width_y(GridCoord*, int,int,int) nogil
+cdef real get_cell_width_z(GridCoord*, int,int,int) nogil
 
 cdef real get_face_area_x(GridCoord*, int,int,int) nogil
 cdef real get_face_area_y(GridCoord*, int,int,int) nogil

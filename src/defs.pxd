@@ -50,9 +50,6 @@ cdef extern from "defs_c.h" nogil:
   enum: BXF,BYF,BZF
   enum: FC0, FCX, FCY, FCZ
 
-  # enum: MU,NU,MUT,GAMT
-  # enum: TC_ISO, TC_ANISO
-
 IF MFIELD:
   cdef extern from "defs_c.h" nogil:
     enum: BX,BY,BZ

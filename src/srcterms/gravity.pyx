@@ -18,7 +18,7 @@ cdef class BnzGravity:
     self.grav_pot_func = NULL
 
 
-  cdef void post_user_init(self, GridCoord*):
+  cdef void post_user_init(self, GridCoord *gc):
 
     cdef int k,j,i
 
@@ -39,19 +39,19 @@ cdef class BnzGravity:
                                     gc.lv[0][i], gc.lv[1][j], gc.lv[2][k], self.g0)
 
 
-  cdef void apply_gravity(self, real4d u1, real4d u0,
+  cdef void apply_gravity(self, real4d u1, real4d w0,
                   real4d fx0, real4d fy0, real4d fz0,
                   GridCoord *gc, int *lims, real dt) nogil:
 
     if self.const_g:
-      apply_gravity_const(self, u1,u0, gc,lims, dt)
+      apply_gravity_const(self, u1,w0, gc,lims, dt)
     else:
-      apply_gravity_phi(self, u1,u0, fx0,fy0,fz0, gc,lims, dt)
+      apply_gravity_phi(self, u1,w0, fx0,fy0,fz0, gc,lims, dt)
 
 
 #--------------------------------------------------------------------------
 
-cdef void apply_gravity_const(BnzGravity grav, real4d u1, real4d u0,
+cdef void apply_gravity_const(BnzGravity grav, real4d u1, real4d w0,
                               GridCoord *gc, int *lims, real dt) nogil:
 
   cdef int i,j,k
@@ -68,7 +68,7 @@ cdef void apply_gravity_const(BnzGravity grav, real4d u1, real4d u0,
                               u0[MZ,k,j,i] * grav.g0[2])
 
 
-cdef void apply_gravity_phi(BnzGravity grav, real4d u1, real4d u0,
+cdef void apply_gravity_phi(BnzGravity grav, real4d u1, real4d w0,
                             real4d fx0, real4d fy0, real4d fz0,
                             GridCoord *gc, int *lims, real dt) nogil:
 
@@ -87,7 +87,7 @@ cdef void apply_gravity_phi(BnzGravity grav, real4d u1, real4d u0,
         phil = 0.5*(phi[k,j,i-1] + phi[k,j,i])
         phir = 0.5*(phi[k,j,i] + phi[k,j,i+1])
 
-        u1[MX,k,j,i] = u1[MX,k,j,i] + dtdx * u0[RHO,k,j,i] * (phil - phir)
+        u1[MX,k,j,i] = u1[MX,k,j,i] + dtdx * w0[RHO,k,j,i] * (phil - phir)
         u1[EN,k,j,i] = u1[EN,k,j,i] - dtdx * (
             fx0[RHO,k,j,i+1] * (phir-phic) - fx0[RHO,k,j,i] * (phil-phic))
 
@@ -98,7 +98,7 @@ cdef void apply_gravity_phi(BnzGravity grav, real4d u1, real4d u0,
           phil = 0.5*(phi[k,j-1,i] + phi[k,j,i])
           phir = 0.5*(phi[k,j,i] + phi[k,j+1,i])
 
-          u1[MY,k,j,i] = u1[MY,k,j,i] + dtdy * u0[RHO,k,j,i] * (phil - phir)
+          u1[MY,k,j,i] = u1[MY,k,j,i] + dtdy * w0[RHO,k,j,i] * (phil - phir)
           u1[EN,k,j,i] = u1[EN,k,j,i] - dtdy * (
               fy0[RHO,k,j+1,i] * (phir-phic) - fy0[RHO,k,j,i] * (phil-phic))
 
@@ -109,6 +109,6 @@ cdef void apply_gravity_phi(BnzGravity grav, real4d u1, real4d u0,
           phil = 0.5*(phi[k-1,j,i] + phi[k,j,i])
           phir = 0.5*(phi[k,j,i] + phi[k+1,j,i])
 
-          u1[MZ,k,j,i] = u1[MZ,k,j,i] + dtdz * u0[RHO,k,j,i] * (phil - phir)
+          u1[MZ,k,j,i] = u1[MZ,k,j,i] + dtdz * w0[RHO,k,j,i] * (phil - phir)
           u1[EN,k,j,i] = u1[EN,k,j,i] - dtdz * (
               fz0[RHO,k+1,j,i] * (phir-phic) - fz0[RHO,k,j,i] * (phil-phic))

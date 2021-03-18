@@ -37,10 +37,7 @@ cdef void set_geometry_(GridCoord *gc):
     real rc,rca,dr, hm,hp
     real dsth,dcth,dth
 
-  cdef:
-    int *Ntot = gc.Ntot
-    real **lf = gc.lf
-    real **dlf = gc.dlf
+  cdef int *Ntot = gc.Ntot
 
   cdef:
     np.ndarray[real, ndim=1] sth = np.zeros(Ntot[1]+1, dtype=np_real)
@@ -48,12 +45,12 @@ cdef void set_geometry_(GridCoord *gc):
 
   for i in range(Ntot[0]):
 
-    rc  = 0.5*(lf[0][i] + lf[0][i+1])
+    rc  = 0.5*(gc.lf[0][i] + gc.lf[0][i+1])
     rca = FABS(rc)
-    dr = dlf[0][i]
+    dr = gc.dlf[0][i]
 
-    hm = 3. + 2.*dr * (-10.*rca + dr) / ( 20.*rc**2 + dr**2)
-    hp = 3. + 2.*dr * ( 10.*rca + dr) / ( 20.*rc**2 + dr**2)
+    # hm = 3. + 2.*dr * (-10.*rca + dr) / ( 20.*rc**2 + dr**2)
+    # hp = 3. + 2.*dr * ( 10.*rca + dr) / ( 20.*rc**2 + dr**2)
 
     # volume r coordinate
     gc.lv[0][i] = rc + 2.*rc*dr**2 / (12.*rc**2 + dr**2)
@@ -65,8 +62,8 @@ cdef void set_geometry_(GridCoord *gc):
     gc.rinv_mean[i]  = gc.d2r[i] / gc.d3r[i]
     gc.src_coeff1[i] = 0.5 * gc.rinv_mean[i] / rc**2
 
-    gc.hm_ratio[0][i] = (hm+1.)/(hp-1.)
-    gc.hp_ratio[0][i] = (hp+1.)/(hm-1.)
+    # gc.hm_ratio[0][i] = (hm+1.)/(hp-1.)
+    # gc.hp_ratio[0][i] = (hp+1.)/(hm-1.)
 
     gc.syxf[i] = 1./gc.lf[0][i]
     gc.syxv[i] = 1./gc.lv[0][i]
@@ -75,28 +72,28 @@ cdef void set_geometry_(GridCoord *gc):
     gc.szxv[i] = 1./gc.lv[0][i]
 
   for j in range(Ntot[1]+1):
-    sth[j] = SIN(lf[1][j])
-    cth[j] = COS(lf[1][j])
+    sth[j] = SIN(gc.lf[1][j])
+    cth[j] = COS(gc.lf[1][j])
 
   for j in range(Ntot[1]):
 
     dsth = sth[j] - sth[j+1]
     dcth = cth[j] - cth[j+1]
-    dth  = dlf[j]
+    dth  = gc.dlf[1][j]
 
     # signs?
-    hm = - dth * (dsth + dth * cth[j])   / (dth * (sth[j] + sth[j+1]) - 2*dcth)
-    hp =   dth * (dsth + dth * cth[j+1]) / (dth * (sth[j] + sth[j+1]) - 2*dcth)
+    # hm = - dth * (dsth + dth * cth[j])   / (dth * (sth[j] + sth[j+1]) - 2*dcth)
+    # hp =   dth * (dsth + dth * cth[j+1]) / (dth * (sth[j] + sth[j+1]) - 2*dcth)
+    #
+    # gc.hm_ratio[1][j] = (hm+1.)/(hp-1.)
+    # gc.hp_ratio[1][j] = (hp+1.)/(hm-1.)
 
-    gc.lv[1][j] = ( (lf[1][j]   * cth[j]   - sth[j]
-                   - lf[1][j+1] * cth[j+1] + sth[j+1]) / dcth )
+    gc.lv[1][j] = ( (gc.lf[1][j]   * cth[j]   - sth[j]
+                   - gc.lf[1][j+1] * cth[j+1] + sth[j+1]) / dcth )
 
-    gc.sin_thf[j]  = FABS(sth)
+    gc.sin_thf[j]  = FABS(sth[j])
     gc.sin_thv[j]  = FABS(SIN(gc.lv[1][j]))
     gc.dcos_thf[j] = FABS(dcth)
-
-    gc.hm_ratio[1][j] = (hm+1.)/(hp-1.)
-    gc.hp_ratio[1][j] = (hp+1.)/(hm-1.)
 
     gc.szyf[j] = 1./gc.sin_thf[j]
     gc.szyv[j] = 1./gc.sin_thv[j]
@@ -106,9 +103,9 @@ cdef void set_geometry_(GridCoord *gc):
       gc.src_coeff2[j][i] = gc.rinv_mean[i] * (FABS(sth[j+1]) - FABS(sth[j])) / FABS(dcth)
 
   for k in range(Ntot[2]):
-    gc.lv[2][k] = 0.5 * (lf[2][k] + lf[2][k+1])
-    gc.hm_ratio[2][k] = 2.
-    gc.hp_ratio[2][k] = 2.
+    gc.lv[2][k] = 0.5 * (gc.lf[2][k] + gc.lf[2][k+1])
+    # gc.hm_ratio[2][k] = 2.
+    # gc.hp_ratio[2][k] = 2.
 
   # Calculate distances between cell centers and their inverse.
 
@@ -119,10 +116,13 @@ cdef void set_geometry_(GridCoord *gc):
 
 
 cdef void free_geom_data_(GridCoord* gc):
+  free(gc.rinv_mean)
+  free(gc.d2r)
   free(gc.d3r)
   free(gc.sin_thf)
   free(gc.sin_thc)
   free(gc.dcos_thf)
+  free(gc.src_coeff1)
   free_2d_array(gc.src_coeff2)
 
 
@@ -202,6 +202,20 @@ cdef inline real get_centr_len_y_(GridCoord *gc, int i, int j, int k) nogil:
 cdef inline real get_centr_len_z_(GridCoord *gc, int i, int j, int k) nogil:
 
   return gc.lv[0][i] * gc.sin_thv[j] * gc.dlv[2][k]
+
+# --------------------------------------------------------------------------
+
+cdef inline real get_cell_width_x_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.dlf[0][i]
+
+cdef inline real get_cell_width_y_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.lv[0][i] * gc.dlf[1][j]
+
+cdef inline real get_cell_width_z_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.lv[0][i] * gc.sin_thv[j] * gc.dlf[2][k]
 
 # --------------------------------------------------------------------------
 

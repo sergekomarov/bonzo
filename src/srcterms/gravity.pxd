@@ -3,7 +3,7 @@
 from bnz.defs cimport *
 from bnz.coordinates.coord cimport GridCoord
 
-ctypedef real (*GravPotFunc)(real,real,real, real) nogil
+ctypedef real (*GravPotFunc)(real,real,real, real[3]) nogil
 
 cdef class BnzGravity:
 

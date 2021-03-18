@@ -10,7 +10,7 @@ from bnz.util cimport print_root
 
 # ADD LAPLACIANS AND CHECK FLOORS
 
-cdef void cons2prim_3(real4d w, real4d u, int lims[6], real gam) nogil:
+cdef void cons2prim(real4d w, real4d u, int lims[6], real gam) nogil:
 
   cdef:
     int j,k,n
@@ -44,7 +44,7 @@ cdef void cons2prim_3(real4d w, real4d u, int lims[6], real gam) nogil:
     print_root("%.1f ms\n", timediff(tstart,tstop))
 
 
-cdef void prim2cons_3(real4d u, real4d w, int lims[6], real gam) nogil:
+cdef void prim2cons(real4d u, real4d w, int lims[6], real gam) nogil:
 
   cdef:
     int j,k,n

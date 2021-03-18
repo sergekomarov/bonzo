@@ -9,7 +9,7 @@ from libc.stdio cimport printf
 
 from bnz.coordinates.coord cimport get_face_area_x, get_face_area_y, get_face_area_z
 from bnz.coordinates.coord cimport get_edge_len_x, get_edge_len_y, get_edge_len_z
-from bnz.coordinates.coord cimport get_centr_len_x, get_centr_len_y, get_centr_len_z
+from bnz.coordinates.coord cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
 
 
 cdef void advance_b(real4d b1, real4d b0, real4d ee,
@@ -254,7 +254,7 @@ cdef void interp_ee2(real4d ee, real4d ec,
 
         IF D2D:
 
-          dsx = get_centr_len_x(gc,i,j,k)
+          dsx = get_cell_width_x(gc,i,j,k)
           wgtx = get_ct_weight(fx[RHO,k,j,i], rho[k,j,i-1], rho[k,j,i], dsx, dt)
 
           dedy_14 = ( wgtx  * (ec[2,k,j,i-1] - fy[BX,k,j,i-1])
@@ -291,7 +291,7 @@ cdef void interp_ee2(real4d ee, real4d ec,
 
         IF D2D and D3D:
 
-          dsy = get_centr_len_y(gc,i,j,k)
+          dsy = get_cell_width_y(gc,i,j,k)
           wgty = get_ct_weight(fy[RHO,k,j,i], rho[k,j-1,i], rho[k,j,i], dsy, dt)
 
           dedz_14 = ( wgty  * (ec[0,k,j-1,i] - fz[BY,k,j-1,i])
@@ -330,7 +330,7 @@ cdef void interp_ee2(real4d ee, real4d ec,
 
         IF D3D:
 
-          dsz = get_centr_len_z(gc,i,j,k)
+          dsz = get_cell_width_z(gc,i,j,k)
           wgtz = get_ct_weight(fz[RHO,k,j,i], rho[k-1,j,i], rho[k,j,i], dsz, dt)
 
           dedx_14 = ( wgtz  * (ec[1,k-1,j,i] - fx[BZ,k-1,j,i])

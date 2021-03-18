@@ -108,14 +108,8 @@ enum {SE=PSC-1};
 enum {PE=PSC-1};
 #endif
 
-// indices of STS coefficients
-// enum {MU=0,NU,MUT,GAMT};
-
 // names of coordinate axes
 enum {XAX,YAX,ZAX};
-
-// isotropic/anisotropic electron thermal conduction
-// enum {TC_ISO, TC_ANISO};
 
 
 // -----------------------------------------------------------------------

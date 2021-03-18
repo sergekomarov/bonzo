@@ -5,7 +5,7 @@ cimport numpy as np
 import sys
 from libc.stdlib cimport malloc, calloc, free
 
-from bnz.util cimport calloc_2d_array, free_2d_array, free_3d_array
+from bnz.util cimport calloc_2d_array, free_2d_array, free_3d_array, print_root
 from bnz.io.read_config import read_param
 from user_grid import set_user_coord_x, set_user_coord_y, set_user_coord_z
 
@@ -23,7 +23,7 @@ ELSE:
   np_real = np.float64
 
 
-cdef void init_coord(GridCoord *gc, GridBc gbc, str usr_dir):
+cdef void init_coord(GridCoord *gc, GridBC gbc, str usr_dir):
 
   init_coord_data(gc)
   set_spacings(gc, gbc, usr_dir)
@@ -50,15 +50,6 @@ cdef void init_coord_data(GridCoord* gc):
   gc.dlv = <real**>calloc_2d_array(3, Ntot_max, sizeof(real))
   gc.dlv_inv = <real**>calloc_2d_array(3, Ntot_max, sizeof(real))
 
-  # interpolation coefficients (Mignone 2014)
-  if gc.interp_order==3 or gc.interp_order==4:
-    gc.cm = <real***>calloc_3d_array(3, gc.interp_order, Ntot_max, sizeof(real))
-    gc.cp = <real***>calloc_3d_array(3, gc.interp_order, Ntot_max, sizeof(real))
-
-  # coefficients used in parabolic reconstruction
-  gc.hm_ratio = <real**>calloc_2d_array(3,Ntot_max, sizeof(real))
-  gc.hp_ratio = <real**>calloc_2d_array(3,Ntot_max, sizeof(real))
-
   # inverse scale factors used e.g. in calculation of gradients
   gc.syxf = <real*>calloc(Ntot[0], sizeof(real))
   gc.syxv = <real*>calloc(Ntot[0], sizeof(real))
@@ -67,8 +58,17 @@ cdef void init_coord_data(GridCoord* gc):
   gc.szyf = <real*>calloc(Ntot[1], sizeof(real))
   gc.szyv = <real*>calloc(Ntot[1], sizeof(real))
 
-  gc.lapl_tmp_xy1 = <real**>calloc_2d_array(IMAX(Ntot[1],OMP_NT), Ntot[0], sizeof(real))
-  gc.lapl_tmp_xy2 = <real**>calloc_2d_array(IMAX(Ntot[1],OMP_NT), Ntot[0], sizeof(real))
+  # # interpolation coefficients (Mignone 2014)
+  # if gc.interp_order==3 or gc.interp_order==4:
+  #   gc.cm = <real***>calloc_3d_array(3, gc.interp_order, Ntot_max, sizeof(real))
+  #   gc.cp = <real***>calloc_3d_array(3, gc.interp_order, Ntot_max, sizeof(real))
+  #
+  # # coefficients used in parabolic reconstruction
+  # gc.hm_ratio = <real**>calloc_2d_array(3,Ntot_max, sizeof(real))
+  # gc.hp_ratio = <real**>calloc_2d_array(3,Ntot_max, sizeof(real))
+
+  # gc.lapl_tmp_xy1 = <real**>calloc_2d_array(IMAX(Ntot[1],OMP_NT), Ntot[0], sizeof(real))
+  # gc.lapl_tmp_xy2 = <real**>calloc_2d_array(IMAX(Ntot[1],OMP_NT), Ntot[0], sizeof(real))
 
   # reconstr = read_param("computation", "reconstr", 's',usr_dir)
   # if reconstr=='weno' or reconstr=='parab':
@@ -92,13 +92,6 @@ cdef void free_coord_data(GridCoord *gc):
   free_2d_array(gc.dlf_inv)
   free_2d_array(gc.dlv_inv)
 
-  free_2d_array(gc.hp_ratio)
-  free_2d_array(gc.hm_ratio)
-
-  if gc.interp_order==3 or gc.interp_order==4:
-    free_3d_array(gc.cm)
-    free_3d_array(gc.cp)
-
   free(gc.syxf)
   free(gc.syxv)
   free(gc.szxf)
@@ -106,10 +99,17 @@ cdef void free_coord_data(GridCoord *gc):
   free(gc.szyf)
   free(gc.szyv)
 
-  # if gc.lapl_tmp_xy1 != NULL:
-  # if gc.lapl_tmp_xy2 != NULL:
-  free_2d_array(gc.lapl_tmp_xy1)
-  free_2d_array(gc.lapl_tmp_xy2)
+  # free_2d_array(gc.hp_ratio)
+  # free_2d_array(gc.hm_ratio)
+  #
+  # if gc.interp_order==3 or gc.interp_order==4:
+  #   free_3d_array(gc.cm)
+  #   free_3d_array(gc.cp)
+  #
+  # # if gc.lapl_tmp_xy1 != NULL:
+  # # if gc.lapl_tmp_xy2 != NULL:
+  # free_2d_array(gc.lapl_tmp_xy1)
+  # free_2d_array(gc.lapl_tmp_xy2)
 
   # free data structures associated with curvilinear coordinates only
   free_geom_data_(gc)
@@ -119,7 +119,7 @@ cdef void free_coord_data(GridCoord *gc):
 
 # --------------------------------------------------------------------
 
-cdef void set_spacings(GridCoord *gc, GridBc gbc, str usr_dir):
+cdef void set_spacings(GridCoord *gc, GridBC gbc, str usr_dir):
 
   cdef:
 
@@ -266,7 +266,17 @@ cdef void add_geom_src_terms(real4d u, real4d w,
                              real4d fx, real4d fy, real4d fz,
                              GridCoord *gc, int *lims, real dt) nogil:
 
+  cdef timeval tstart, tstop
+
+  IF DIAGNOSE:
+    print_root("add geometric source terms ... ")
+    gettimeofday(&tstart, NULL)
+
   add_geom_src_terms_(u,w, fx,fy,fz, gc, lims,dt)
+
+  IF DIAGNOSE:
+    gettimeofday(&tstop, NULL)
+    print_root("%.1f ms\n", timediff(tstart,tstop))
 
   return
 
@@ -294,6 +304,17 @@ cdef inline real get_centr_len_z(GridCoord *gc, int i, int j, int k) nogil:
 
 # -------------------------------------------------------------------------
 
+cdef inline real get_cell_width_x(GridCoord *gc, int i, int j, int k) nogil:
+  return get_cell_width_x_(gc, i,j,k)
+
+cdef inline real get_cell_width_y(GridCoord *gc, int i, int j, int k) nogil:
+  return get_cell_width_y_(gc, i,j,k)
+
+cdef inline real get_cell_width_z(GridCoord *gc, int i, int j, int k) nogil:
+  return get_cell_width_z_(gc, i,j,k)
+
+# -------------------------------------------------------------------------
+
 cdef inline real get_face_area_x(GridCoord *gc, int i, int j, int k) nogil:
   return get_face_area_x_(gc, i,j,k)
 
@@ -311,93 +332,93 @@ cdef inline real get_cell_vol(GridCoord *gc, int i, int j, int k) nogil:
 
 # ---------------------------------------------------------------
 
-cdef void add_laplacian(GridCoord *gc, real3d a, real c) nogil:
-
-  # Subtract/add the Laplacian of an array without copying.
-
-  cdef int i,j,k, id
-
-  cdef:
-    int nx = gc.Ntot[0]
-    int ny = gc.Ntot[1]
-    int nz = gc.Ntot[2]
-
-  cdef:
-    real h0 = 1.-2.*c
-    real h1 = c
-
-  cdef:
-    real2d tmp1 = gc.lapl_tmp_xy1
-    real2d tmp2 = gc.lapl_tmp_xy2
-
-  cdef:
-    real am1,a0,ap1,ap2
-    real _tmp1,_tmp2
-
-  with nogil, parallel(num_threads=OMP_NT):
-
-    id = threadid()
-
-    for k in prange(nz, schedule='dynamic'):
-
-      for j in range(ny):
-
-        _tmp2 = a[k,j,0]
-
-        for i in range(1,nx-2,2):
-
-          _tmp1 = h1*(a[k,j,i-1] + a[k,j,i+1]) + h0*a[k,j,i]
-          a[k,j,i-1] = _tmp2
-
-          _tmp2 = h1*(a[k,j,i] + a[k,j,i+2]) + h0*a[k,j,i+1]
-          a[k,j,i] = _tmp1
-
-        i = i+2
-
-        if i==nx-2:
-          a[k,j,i] = h1*(a[k,j,i-1] + a[k,j,i+1]) + h0*a[k,j,i]
-
-        a[k,j,i-1] = _tmp2
-
-      # -------------------------------------------------------------------
-
-      IF D2D:
-
-        copy1d(&tmp2[id,0], &a[k,0,0], nx)
-
-        for j in range(1,ny-2,2):
-
-          lapl_perp1(&a[k,j-1,0], &a[k,j,0], &a[k,j+1,0], &a[k,j+2,0],
-                     &tmp1[id,0], &tmp2[id,0], c, nx)
-
-        j = j+2
-
-        if j==ny-2:
-          lapl_perp2(&a[k,j-1,0], &a[k,j,0], &a[k,j+1,0], c, nx)
-
-        copy1d(&a[k,j-1,0], &tmp2[id,0], nx)
-
-  # end of the parallel loop over k
-
-  # ----------------------------------------------------------------------
-
-  IF D3D:
-
-    for j in range(ny):
-      copy1d(&tmp2[j,0], &a[0,j,0], nx)
-
-    for k in range(1,nz-2,2):
-      for j in range(ny):
-
-        lapl_perp1(&a[k-1,j,0], &a[k,j,0], &a[k+1,j,0], &a[k+2,j,0],
-                   &tmp1[j,0], &tmp2[j,0], c, nx)
-
-    k = k+2
-
-    if k==nz-2:
-
-      for j in range(ny):
-        lapl_perp2(&a[k-1,j,0], &a[k,j,0], &a[k+1,j,0], c, nx)
-
-    for j in range(ny):
-      copy1d(&a[k-1,j,0], &tmp2[j,0], nx)
+# cdef void add_laplacian(GridCoord *gc, real3d a, real c) nogil:
+#
+#   # Subtract/add the Laplacian of an array without copying.
+#
+#   cdef int i,j,k, id
+#
+#   cdef:
+#     int nx = gc.Ntot[0]
+#     int ny = gc.Ntot[1]
+#     int nz = gc.Ntot[2]
+#
+#   cdef:
+#     real h0 = 1.-2.*c
+#     real h1 = c
+#
+#   cdef:
+#     real2d tmp1 = gc.lapl_tmp_xy1
+#     real2d tmp2 = gc.lapl_tmp_xy2
+#
+#   cdef:
+#     real am1,a0,ap1,ap2
+#     real _tmp1,_tmp2
+#
+#   with nogil, parallel(num_threads=OMP_NT):
+#
+#     id = threadid()
+#
+#     for k in prange(nz, schedule='dynamic'):
+#
+#       for j in range(ny):
+#
+#         _tmp2 = a[k,j,0]
+#
+#         for i in range(1,nx-2,2):
+#
+#           _tmp1 = h1*(a[k,j,i-1] + a[k,j,i+1]) + h0*a[k,j,i]
+#           a[k,j,i-1] = _tmp2
+#
+#           _tmp2 = h1*(a[k,j,i] + a[k,j,i+2]) + h0*a[k,j,i+1]
+#           a[k,j,i] = _tmp1
+#
+#         i = i+2
+#
+#         if i==nx-2:
+#           a[k,j,i] = h1*(a[k,j,i-1] + a[k,j,i+1]) + h0*a[k,j,i]
+#
+#         a[k,j,i-1] = _tmp2
+#
+#       # -------------------------------------------------------------------
+#
+#       IF D2D:
+#
+#         copy1d(&tmp2[id,0], &a[k,0,0], nx)
+#
+#         for j in range(1,ny-2,2):
+#
+#           lapl_perp1(&a[k,j-1,0], &a[k,j,0], &a[k,j+1,0], &a[k,j+2,0],
+#                      &tmp1[id,0], &tmp2[id,0], c, nx)
+#
+#         j = j+2
+#
+#         if j==ny-2:
+#           lapl_perp2(&a[k,j-1,0], &a[k,j,0], &a[k,j+1,0], c, nx)
+#
+#         copy1d(&a[k,j-1,0], &tmp2[id,0], nx)
+#
+#   # end of the parallel loop over k
+#
+#   # ----------------------------------------------------------------------
+#
+#   IF D3D:
+#
+#     for j in range(ny):
+#       copy1d(&tmp2[j,0], &a[0,j,0], nx)
+#
+#     for k in range(1,nz-2,2):
+#       for j in range(ny):
+#
+#         lapl_perp1(&a[k-1,j,0], &a[k,j,0], &a[k+1,j,0], &a[k+2,j,0],
+#                    &tmp1[j,0], &tmp2[j,0], c, nx)
+#
+#     k = k+2
+#
+#     if k==nz-2:
+#
+#       for j in range(ny):
+#         lapl_perp2(&a[k-1,j,0], &a[k,j,0], &a[k+1,j,0], c, nx)
+#
+#     for j in range(ny):
+#       copy1d(&a[k-1,j,0], &tmp2[j,0], nx)

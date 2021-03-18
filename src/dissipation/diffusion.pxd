@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs cimport *
-from bnz.coord.grid cimport *
+from bnz.coordinates.grid cimport BnzGrid
 
 
 # time integrators
@@ -50,10 +50,13 @@ cdef class DiffScratch:
     #resistivity
     real4d bfld0
 
+cdef class BnzIntegr
 
 cdef class BnzDiffusion:
 
   cdef:
+    # reference to parent integrator instance
+    BnzIntegr integr
 
     # parabolic Courant number
     real cour_diff
@@ -77,7 +80,8 @@ cdef class BnzDiffusion:
 
   cdef DiffScratch scratch
 
-  cdef void diffuse(self, BnzGrid,BnzIntegr,real)
+  cdef void diffuse(self, BnzGrid,real)
+  cdef void collide(self, real4d, int*,real)
 
   cdef void get_nsts(self, real,real)
   cdef real2d get_sts_coeff(self,int)

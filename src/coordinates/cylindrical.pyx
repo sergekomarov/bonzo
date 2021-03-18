@@ -36,16 +36,16 @@ cdef void set_geometry_(GridCoord *gc):
     rca = FABS(rc)
     dr = gc.dlf[0][i]
 
-    hm = 3. - 0.5*dr/rca
-    hp = 3. + 0.5*dr/rca
+    # hm = 3. - 0.5*dr/rca
+    # hp = 3. + 0.5*dr/rca
 
     gc.lv[0][i] = rc + dr**2 / (12.*rc)
     gc.d2r[i] = rca*dr
     gc.rinv_mean[i] = 1./rca
     gc.src_coeff1[i] = 0.5*gc.rinv_mean[i]**2
 
-    gc.hm_ratio[0][i] = (hm+1.)/(hp-1.)
-    gc.hp_ratio[0][i] = (hp+1.)/(hm-1.)
+    # gc.hm_ratio[0][i] = (hm+1.)/(hp-1.)
+    # gc.hp_ratio[0][i] = (hp+1.)/(hm-1.)
 
     gc.syxf[i] = 1./gc.lf[0][i]
     gc.syxv[i] = 1./gc.lv[0][i]
@@ -59,8 +59,8 @@ cdef void set_geometry_(GridCoord *gc):
   for n in range(1,3):
     for j in range(gc.Ntot[n]):
       gc.lv[n][j] = 0.5*(gc.lf[n][j] + gc.lf[n][j+1])
-      gc.hm_ratio[n][j] = 2.
-      gc.hp_ratio[n][j] = 2.
+      # gc.hm_ratio[n][j] = 2.
+      # gc.hp_ratio[n][j] = 2.
 
   for n in range(3):
     for i in range(1,gc.Ntot[n]):
@@ -110,7 +110,7 @@ cdef void add_geom_src_terms_(real4d u, real4d w,
 
         # add radial momentum source term at second order
         u[MX,k,j,i] += dt * gc.rinv_mean[i] * mpp
-        #u[MX,k,j,i] += - dt * 0.5*rinv * (fy[MY,k,j,i+1] + fy[MY,k,j,i])
+        #u[MX,k,j,i] += dt * 0.5*rinv * (fy[MY,k,j,i+1] + fy[MY,k,j,i])
 
         # this expression is exact (-> exact conservation of angular momentum):
         u[MY,k,j,i] -= dt * gc.src_coeff1[i] * (rp * fx[MY,k,j,i+1] + rm * fx[MY,k,j,i])
@@ -144,6 +144,20 @@ cdef inline real get_centr_len_y_(GridCoord *gc, int i, int j, int k) nogil:
 cdef inline real get_centr_len_z_(GridCoord *gc, int i, int j, int k) nogil:
 
   return gc.dlv[2][k]
+
+# ----------------------------------------------------------------------------
+
+cdef inline real get_cell_width_x_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.dlf[0][i]
+
+cdef inline real get_cell_width_y_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.lv[0][i] * gc.dlf[1][j]
+
+cdef inline real get_cell_width_z_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.dlf[2][k]
 
 # ----------------------------------------------------------------------------
 

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "turb_driv.h"
+#include "turb_driv_c.h"
 
 void advance_driv_force_i(real *fdrivx, real *fdrivy, real *fdrivz,
                           real *c1, real *c2,

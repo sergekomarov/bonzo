@@ -11,7 +11,7 @@ from cython.parallel import parallel, prange, threadid
 
 from libc.stdlib cimport rand, srand
 
-from utils cimport rand01, print_root
+from bnz.util cimport rand01, print_root
 
 IF SPREC:
   np_real = np.float32
@@ -23,7 +23,7 @@ cdef class BnzTurbDriv:
 
   def __cinit__(self, GridCoord *gc, str usr_dir):
 
-    self.f0 = read_param("physics", "f", 'f',usr_dir)
+    self.f0 = read_param("physics", "f0", 'f',usr_dir)
     self.tau = read_param("physics", "tau", 'f',usr_dir)
     self.nmod = read_param("physics", "nmod", 'i',usr_dir)
 
@@ -99,11 +99,11 @@ cdef class BnzTurbDriv:
 
           advance_driv_force_i(&fdriv[0,k,j,0], &fdriv[1,k,j,0], &fdriv[2,k,j,0],
                                &c1[0], &c2[0],
-                               &(gc.lv[0][0]), y, z,
+                               &(gc.lv[0][0]), y,z, lims[0],lims[1],
                                kx0, ky0, kz0, dt_tau, f1, nmod)
 
 
-  cdef void apply_driv_force(self, real4d u1, real4d u0, int *lims, real dt) nogil:
+  cdef void apply_driv_force(self, real4d u1, real4d w0, int *lims, real dt) nogil:
 
     cdef int n,k,j,i
 
@@ -118,7 +118,7 @@ cdef class BnzTurbDriv:
       for j in range(lims[2],lims[3]+1):
         for i in range(lims[0],lims[1]+1):
 
-          u1[EN,k,j,i] = u1[EN,k,j,i] + ( dt / u0[RHO,k,j,i]
-                        * (self.fdriv[0,k,j,i] * u0[MX,k,j,i]
-                         + self.fdriv[1,k,j,i] * u0[MY,k,j,i]
-                         + self.fdriv[2,k,j,i] * u0[MZ,k,j,i]) )
+          u1[EN,k,j,i] = u1[EN,k,j,i] + ( dt
+                        * (self.fdriv[0,k,j,i] * w0[VX,k,j,i]
+                         + self.fdriv[1,k,j,i] * w0[VY,k,j,i]
+                         + self.fdriv[2,k,j,i] * w0[VZ,k,j,i]) )

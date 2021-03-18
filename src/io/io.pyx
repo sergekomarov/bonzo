@@ -22,7 +22,7 @@ ELSE:
   np_real = np.float64
 
 
-cdef class BnzOutput:
+cdef class BnzIO:
 
   def __cinit__(str usr_dir):
 

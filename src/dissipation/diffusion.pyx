@@ -5,17 +5,17 @@ cimport numpy as np
 
 from libc.stdlib cimport malloc, calloc, free
 
-from bnz.utils cimport print_root
+from bnz.util cimport print_root
 from bnz.io.read_config import read_param
 
-
-cimport thcond_elec as tce
+cimport thcond_elec
 IF IONTC:
-  cimport thcond_ion as tci
-# cimport visc
-# cimport resist
-# cimport visc4
-# cimport resist4
+  cimport thcond_ion
+cimport viscosity
+# cimport resistivity
+# cimport viscosity4
+# cimport resistivity4
+cimport collisions
 
 IF SPREC:
   np_real = np.float32
@@ -27,9 +27,11 @@ cdef class BnzDiffusion:
 
   # Allocate scratch arrays for STS integration of diffusive terms.
 
-  def __cinit__(self, GridCoord *gc, real gam, str usr_dir):
+  def __cinit__(self, BnzIntegr integr, GridCoord *gc, str usr_dir):
 
     cdef int i,j,k
+
+    self.integr = integr
 
     # parabolic Courant number
     self.cour_diff = read_param("computation", "cour_diff", 'f', usr_dir)
@@ -65,7 +67,7 @@ cdef class BnzDiffusion:
     self.eta4 = read_param("physics", "eta4", 'f',usr_dir)
 
     # gas gamma
-    self.gam = gam
+    self.gam = integr.gam
 
     # Allocate arrays.
 
@@ -151,46 +153,66 @@ cdef class BnzDiffusion:
       scr.dvel0 = np.zeros(sh3, dtype=np_real) # dvel0, dbf0, visc. flux,   Pointing flux
       scr.dvel = np.zeros(sh3, dtype=np_real) #  dvel,  dbf,  \nabla^2 vel, current
 
+  # ---------------------------------------------------------------
 
-  cdef void diffuse(self, BnzGrid grid, BnzIntegr integr, real dt):
+  cdef void diffuse(self, BnzGrid grid, real dt):
 
     # Integrate diffusive terms with super-time-stepping
     # using Lagrange polynomials.
 
+    if (self.kappa0 != 0. or self.nuiic0 != 0. or self.kl != 0. or
+        self.eta0 != 0. or self.eta4 != 0. or self.mu0 != 0. or self.mu4 != 0.):
+
+      IF DIAGNOSE:
+        cdef timeval tstart, tstop
+        print_root("diffusion... ")
+        gettimeofday(&tstart, NULL)
+
+      # electron thermal conduction
+      if self.kappa0 != 0.:
+        thcond_elec.diffuse(self,grid,dt)
+
+      # ion thermal conduction
+      IF IONTC:
+        if self.nuiic0 != 0. or self.kl != 0.:
+          thcond_ion.diffuse(self,grid,dt)
+
+      # # resistivity
+      # if self.eta != 0.:
+      #   resistivity.diffuse(self,grid,dt)
+      #
+      # # hyperresistivity
+      # if self.eta4 != 0.:
+      #   resistivity4.diffuse(self,grid,dt)
+
+      # viscosity
+      if self.mu != 0.:
+        viscosity.diffuse(self,grid,dt)
+
+      # # hyperviscosity
+      # if self.mu4 != 0.:
+      #   viscosity4.diffuse(self,grid,dt)
+
+      IF DIAGNOSE:
+        gettimeofday(&tstop, NULL)
+        print_root("%.1f ms\n", timediff(tstart,tstop))
+
+  # -----------------------------------------------------------------
+
+  cdef void collide(self, real4d w, int *lims, real dt):
+
     IF DIAGNOSE:
       cdef timeval tstart, tstop
-      print_root(rank, "diffusion... ")
+      print_root("apply collision operator to pressure components... ")
       gettimeofday(&tstart, NULL)
 
-    # electron thermal conduction
-    if self.kappa0 != 0.:
-      tce.diffuse(grid,integr,dt)
-
-    # ion thermal conduction
-    IF IONTC:
-      if self.nuiic0 != 0. or self.kL != 0.:
-        tci.diffuse(grid,integr,dt)
-
-    # resistivity
-    if self.eta != 0.:
-      res.diffuse(grid,integr,dt)
-
-    # hyperresistivity
-    if self.eta4 != 0.:
-      res4.diffuse(grid,integr,dt)
-
-    # viscosity
-    if self.mu != 0.:
-      visc.diffuse(grid,integr,dt)
-
-    # hyperviscosity
-    if self.mu4 != 0.:
-      visc4.diffuse(grid,integr,dt)
+    collisions.collide(self, w, lims,dt)
 
     IF DIAGNOSE:
       gettimeofday(&tstop, NULL)
-      print_root(rank, "%.1f ms\n", timediff(tstart,tstop))
+      print_root("%.1f ms\n", timediff(tstart,tstop))
 
+  # -----------------------------------------------------------------
 
   cdef int get_nsts(self, real dt_hyp, real dt_diff):
 

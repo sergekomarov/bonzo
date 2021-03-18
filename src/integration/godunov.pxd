@@ -2,7 +2,7 @@
 
 from bnz.defs cimport *
 from bnz.coordinates.coord cimport GridCoord
-from bnz.integrate.integrator cimport BnzIntegr
+from bnz.integration.integrator cimport BnzIntegr
 
 cdef void godunov_fluxes(real4d, real4d, real4d,
                          real4d, real4d, GridCoord*, int*,

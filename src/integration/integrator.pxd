@@ -72,13 +72,13 @@ ctypedef enum Reconstr:
 
 # Function pointers.
 
-# pointer to Riemann solver
+# Riemann solver
 ctypedef void (*RSolverFunc)(
             real**, real**, real**, real*,   # &flux, wl, wr, bx
             int, int,                        # start/end x-indices
             real) nogil                      # gas gamma
 
-# pointer to reconstruction function
+# reconstruction function
 ctypedef void (*ReconstrFunc)(
             real**, real**,     # return reconstructed wR(i-1/2) and wL(i+1/2)
             real***,            # array of primitive variables along x-axis
@@ -130,6 +130,7 @@ cdef class BnzIntegr:
 
   cdef BnzGravity gravity
   cdef BnzTurbDriv turb_driv
+  cdef BnzDiffusion diffusion
 
   cdef:
 
@@ -176,6 +177,18 @@ cdef class BnzIntegr:
     real q_mc     # charge-to-mass ratio of CRs relative to thermal ions (MHDPIC)
     real rho_cr   # CR density (MHDPIC)
 
+  # Functions
+
+  cdef void integrate_hydro( self, real4d,real4d,real4d,real4d, GridCoord*, int,real)
+  cdef void integrate_field( self, real4d,real4d,real4d,real4d, GridCoord*, int,real)
+  cdef void add_source_terms(self, real4d,real4d,real4d,real4d, GridCoord*, int,real)
+  cdef void update_physics(self, GridCoord*, int*,real)
+  cdef void new_dt(self, real4d, GridCoord*)
+  cdef void diffuse(self, BnzGrid, real)
+
+# ----------------------------------------------
+
+cdef int1d get_integr_lims(int, int*)
 
 # # function pointer to gravitational potential
 # ctypedef real (*GravPotFunc)(real,real,real, real, real[3]) nogil

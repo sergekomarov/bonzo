@@ -25,8 +25,8 @@ cdef void set_geometry_(GridCoord *gc):
     for i in range(gc.Ntot[n]):
 
       gc.lv[n][i] = 0.5 * (gc.lf[n][i] + gc.lf[n][i+1])
-      gc.hm_ratio[n][i] = 2.
-      gc.hp_ratio[n][i] = 2.
+      # gc.hm_ratio[n][i] = 2.
+      # gc.hp_ratio[n][i] = 2.
 
   for i in range(gc.Ntot[0]):
     gc.syxf[i] = 1.
@@ -79,6 +79,20 @@ cdef inline real get_centr_len_y_(GridCoord *gc, int i, int j, int k) nogil:
 cdef inline real get_centr_len_z_(GridCoord *gc, int i, int j, int k) nogil:
 
   return gc.dlv[2][k]
+
+# ----------------------------------------------------------------------------
+
+cdef inline real get_cell_width_x_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.dlf[0][i]
+
+cdef inline real get_cell_width_y_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.dlf[1][j]
+
+cdef inline real get_cell_width_z_(GridCoord *gc, int i, int j, int k) nogil:
+
+  return gc.dlf[2][k]
 
 # ---------------------------------------------------------------------------
 

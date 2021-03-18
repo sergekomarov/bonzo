@@ -17,6 +17,10 @@ from bnz.coordinates.coord cimport get_cell_vol
 
 cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
 
+  IF DIAGNOSE:
+    cdef timeval tstart, tstop
+    gettimeofday(&tstart, NULL)
+
   # in primitive variables
 
   cdef:
@@ -111,7 +115,11 @@ cdef void print_nrg(BnzGrid grid, BnzIntegr integr):
   ELSE:
     print_root("Etot = %f\n", ekm+etm+emm)
 
-
   print_root("-----------------------------------\n")
+
+  IF DIASNOSE:
+    gettimeofday(&tstop, NULL)
+    print_root("mean energy densities calculated in %.1f ms\n",
+               timediff(tstart,tstop))
 
   return

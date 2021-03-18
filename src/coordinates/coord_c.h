@@ -1,8 +1,7 @@
 #ifndef COORDINATES_H
 #define COORDINATES_H
 
-#include <stdint.h>
-#include "../defs.h"
+#include "../defs_c.h"
 
 typedef enum {
   CS_UNI,
@@ -56,7 +55,7 @@ typedef struct {
   int size[3];          // numbers of MPI blocks (grids) in each directions
   int size_tot;         // total number of blocks
   int ***ranks;         // 3D array of grid ranks
-  int nbr_ranks[3][2];  // ranks of neighboring grids nbr_ids[axis,L(0)/R(1)]
+  int nbr_ranks[3][2];  // ranks of neighboring grids nbr_ranks[axis,L(0)/R(1)]
 
   // scale factors e.g. to calculate gradients
   real *syxf;
@@ -66,13 +65,13 @@ typedef struct {
   real *szyf;
   real *szyv;
 
-  // coefficients used in parabolic reconstruction (Mignone paper)
-  real **hp_ratio;
-  real **hm_ratio;
-
-  // interpolation coefficients (Mignone paper)
-  real ***cm;
-  real ***cp;
+  // // coefficients used in parabolic reconstruction (Mignone paper)
+  // real **hp_ratio;
+  // real **hm_ratio;
+  //
+  // // interpolation coefficients (Mignone paper)
+  // real ***cm;
+  // real ***cp;
 
   // Auxilary geometric coefficients to reduce amount of calculations:
 
@@ -89,22 +88,23 @@ typedef struct {
   real **src_coeff2;
 
   // temporary arrays to calculate Laplacians of grid arrays
-  real **lapl_tmp_xy1;
-  real **lapl_tmp_xy2;
+  // real **lapl_tmp_xy1;
+  // real **lapl_tmp_xy2;
 
   // //scratch arrays used by reconstruction routines
-  // real ***rcn_w;
-  // real **rcn_wl;
-  // real **rcn_wr;
+  // //real ***rcn_w;
+  // //real **rcn_wl;
+  // //real **rcn_wr;
 
 } GridCoord;
 
 
-extern void lapl_perp1(real *ajm1, real *aj0, real *ajp1, real *ajp2,
-                       real *tmp1, real *tmp2, real c, int nx);
-extern void lapl_perp2(real *ajm1, real *aj0, real *ajp1, real c, int nx);
-extern void copy1d(real *a, real *b, int n);
+// extern void lapl_perp1(real *ajm1, real *aj0, real *ajp1, real *ajp2,
+//                        real *tmp1, real *tmp2, real c, int nx);
+// extern void lapl_perp2(real *ajm1, real *aj0, real *ajp1, real c, int nx);
+// extern void copy1d(real *a, real *b, int n);
 
+// do not use
 // void add_laplacian(real ***a, GridCoord *gc, real**,real**, real c)
 
 #endif

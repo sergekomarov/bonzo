@@ -13,9 +13,10 @@ from libc.stdio cimport printf
 
 from bnz.util cimport print_root
 cimport util_diffuse as utdiff
+from bnz.coordinates.coord cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
 
 
-cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
+cdef void diffuse(BnzDiffusion diff, BnzGrid grid, real dt):
   # only need integr to apply BCs
 
   # Evolve ion temperatures by super-time-stepping.
@@ -24,7 +25,7 @@ cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
     GridCoord *gc = grid.coord
     real4d prim = grid.data.prim
     real4d bfld = grid.data.bfld
-    BnzDiffusion diff = integr.diff
+    BnzIntegr integr = diff.integr
     DiffScratch scr = diff.scratch
 
     real dt_hyp = dt
@@ -486,6 +487,7 @@ cdef real get_dt_tci(real4d prim, GridCoord *gc, BnzDiffusion diff):
     # real dTx,dTy,dTz,dTi, B2i
     real _temp_par
     real ad, ad_dl2, ad_dl2_max = 0.
+    real dsx,dsy,dsz
 
   cdef:
     real a1 = diff.kl * SQRT(0.5*B_PI)
@@ -494,10 +496,6 @@ cdef real get_dt_tci(real4d prim, GridCoord *gc, BnzDiffusion diff):
   cdef:
     # real3d Tpl = diff.scr.tempi_par
     real ad_dl2_max_loc[OMP_NT]
-
-    real *dxfi = gc.dlf_inv[0]
-    real *dyfi = gc.dlf_inv[1]
-    real *dzfi = gc.dlf_inv[2]
 
   IF MPI:
     cdef:
@@ -535,9 +533,13 @@ cdef real get_dt_tci(real4d prim, GridCoord *gc, BnzDiffusion diff):
           # ad = ad * FABS(prim[BX,k,j,i] * dTx + prim[BY,k,j,i] * dTy
           #              + prim[BZ,k,j,i] * dTz) * B2i*dTi
 
-          ad_dl2 = SQR(dxfi[i]) * ad #* FABS(prim[BX,k,j,i])
-          IF D2D: ad_dl2 = ad_dl2 + SQR(dyfi[j]) * ad #* FABS(prim[BY,k,j,i])
-          IF D3D: ad_dl2 = ad_dl2 + SQR(dzfi[k]) * ad #* FABS(prim[BZ,k,j,i])
+          dsx = get_cell_width_x(gc,i,j,k)
+          dsy = get_cell_width_y(gc,i,j,k)
+          dsz = get_cell_width_z(gc,i,j,k)
+
+          ad_dl2 = ad/SQR(dsx) #* FABS(prim[BX,k,j,i])
+          IF D2D: ad_dl2 = ad_dl2 + ad/SQR(dsy) #* FABS(prim[BY,k,j,i])
+          IF D3D: ad_dl2 = ad_dl2 + ad/SQR(dsz) #* FABS(prim[BZ,k,j,i])
 
           if ad_dl2 > ad_dl2_max_loc[id]: ad_dl2_max_loc[id] = ad_dl2
 

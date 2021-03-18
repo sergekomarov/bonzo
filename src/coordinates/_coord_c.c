@@ -45,6 +45,10 @@ void copy1d(real *a, real *b, int n) {
 
 }
 
+
+// =======================
+// do not use this
+
 // void add_laplacian(real ***a, GridCoord *gc, real **tmp1, real **tmp2, real c) {
 //
 //   // Subtract/add the Laplacian of an array without copying.

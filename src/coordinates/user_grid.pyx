@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from bnz.def_cy cimport *
+from bnz.defs cimport *
 from coord cimport GridCoord
 
 import numpy as np

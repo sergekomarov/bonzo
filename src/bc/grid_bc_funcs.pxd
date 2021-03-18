@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from bnz.defs cimport *
-from bnz.coordinates.grid cimport GridData,GridCoord
-from bnz.integrate.integrator cimport BnzIntegr
+from bnz.coordinates.grid cimport GridData
+from bnz.coordinates.coord cimport GridCoord
+cdef class BnzIntegr
 
 cdef void x1_grid_bc_periodic(GridData,GridCoord*, BnzIntegr, int1d)
 cdef void x2_grid_bc_periodic(GridData,GridCoord*, BnzIntegr, int1d)

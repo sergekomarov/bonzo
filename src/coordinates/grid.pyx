@@ -12,7 +12,7 @@ from libc.stdlib cimport free, calloc
 
 from bnz.util cimport free_2d_array, free_3d_array, print_root
 from coord cimport init_coord, free_coord_data
-from interpolate cimport set_interp_coeff
+# from interpolate cimport set_interp_coeff
 cimport bnz.mhd.eos as eos
 
 from bnz.io.read_config import read_param
@@ -67,13 +67,13 @@ cdef class BnzGrid:
     IF MPI: domain_decomp(self.coord, usr_dir)
 
     # init boundary conditions
-    self.bc = GridBc(self.coord, usr_dir)
+    self.bc = GridBC(self.coord, usr_dir)
 
     # init coordinate system
     init_coord(self.coord, usr_dir)
 
     # set interface interpolation coefficients
-    set_interp_coeff(self.coord, 3)
+    # set_interp_coeff(self.coord)
 
     # init data arrays
     self.data = GridData(self.coord)
@@ -87,11 +87,11 @@ cdef class BnzGrid:
 
   cdef void cons2prim(self, int *lims, real gam):
 
-    eos.cons2prim_3(self.data.prim, self.data.cons, lims, gam)
+    eos.cons2prim(self.data.prim, self.data.cons, lims, gam)
 
   cdef void prim2cons(self, int *lims, real gam):
 
-    eos.prim2cons_3(self.data.cons, self.data.prim, lims, gam)
+    eos.prim2cons(self.data.cons, self.data.prim, lims, gam)
 
   cdef void apply_grid_bc(self, BnzIntegr integr, int1d bvars):
     self.bc.apply_grid_bc(self.data,self.coord, integr, bvars)
@@ -132,15 +132,15 @@ cdef void init_params(GridCoord *gc, str usr_dir):
   elif reconstr=='linear':
     gc.ng=3
     gc.interp_order=2
-  elif reconstr=='weno':
-    gc.ng=3
-    gc.interp_order=3
-  elif reconstr=='parab':
-    gc.ng=4
-    gc.interp_order=4
-
-  if tintegr=='rk3':
-    gc.ng=9
+  # elif reconstr=='weno':
+  #   gc.ng=3
+  #   gc.interp_order=3
+  # elif reconstr=='parab':
+  #   gc.ng=4
+  #   gc.interp_order=4
+  #
+  # if tintegr=='rk3':
+  #   gc.ng=9
 
   # global box size including ghost cells
   gc.Ntot_glob[0] = gc.Nact_glob[0] + 2*gc.ng
@@ -169,7 +169,7 @@ cdef void init_params(GridCoord *gc, str usr_dir):
 
   # Choose coordinate geometry and set default grid limits.
 
-  geom = read_param("computation","geometry",'s',usr_dir)
+  geom = read_param("physics","geometry",'s',usr_dir)
   cdef:
     real *lmin = gc.lmin
     real *lmax = gc.lmax
@@ -256,12 +256,12 @@ IF MPI:
     # check if number of blocks is consistent with number of processes and grid size
 
     if gc.size_tot != size0:
-      print_root("Total number of MPI blocks is not equal to number of processors!\n")
+      print_root("Error: Total number of MPI blocks is not equal to number of processors.\n")
       sys.exit()
 
     for k in range(3):
       if gc.Nact_glob[k] % gc.size[k] != 0:
-        print_root("Number of MPI blocks is not a multiple of grid size in %i-direction!\n", k)
+        print_root("Error: Number of MPI blocks is not a multiple of grid size in %i-direction.\n", k)
         sys.exit()
 
     hilbert_curve = None
@@ -273,7 +273,7 @@ IF MPI:
       # check if numbers of blocks in each direction are same and equal to 2**p
       if gc.size[0]==gc.size[1] and gc.size[1]==gc.size[2] and (gc.size[0] & (gc.size[0] - 1)) == 0:
 
-        print_root('Using 2d Hilbert-curve domain decomposition...\n')
+        print_root('Using 3d Hilbert-curve domain decomposition...\n')
 
         p=<int>np.log2(gc.size[0])
 
@@ -291,7 +291,7 @@ IF MPI:
 
       if gc.size[0]==gc.size[1] and (gc.size[0] & (gc.size[0] - 1)) == 0:
 
-        print_root('using 3d Hilbert-curve domain decomposition...\n')
+        print_root('Using 2d Hilbert-curve domain decomposition...\n')
 
         p=<int>np.log2(gc.size[0])
 

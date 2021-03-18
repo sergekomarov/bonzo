@@ -25,7 +25,7 @@ IF MPI:
     mpi_real = mpi.DOUBLE
 
 
-cdef class GridBc:
+cdef class GridBC:
 
   def __cinit__(self, GridCoord *gc, str usr_dir):
 
@@ -205,9 +205,9 @@ cdef class GridBc:
       IF MHDPIC:
         self.exch_bc_funcs[2][1] = z2_exch_bc_reflect
 
-    # -------------------------------------------------------
+    # ---------------------------------------------------------------
 
-    # special BC for cylindrical and spherical coordinates
+    # special reflective BC for cylindrical and spherical coordinates
 
     if gc.geom==CG_CYL:
 
@@ -222,20 +222,6 @@ cdef class GridBc:
             # translation phi->phi+pi
             ph_pos = (py + sy/2) % sy
             gc.nbr_ranks[0][0] = gc.ranks[0][ph_pos][pz]
-
-      if gc.lmin[1]==0. and gc.lmax[1]==2*B_PI:
-        self.grid_bc_funcs[1][0] = y1_grid_bc_periodic
-        self.grid_bc_funcs[1][1] = y2_grid_bc_periodic
-        IF MHDPIC:
-          self.exch_bc_funcs[1][0] = y1_exch_bc_periodic
-          self.exch_bc_funcs[1][1] = y2_exch_bc_periodic
-
-        IF MPI:
-          if py==0 and sy>1:
-            gc.nbr_ranks[1][0] = gc.ranks[px][sy-1][pz]
-
-          if py==sy-1 and sy>1:
-            gc.nbr_ranks[1][1] = gc.ranks[px][0][pz]
 
     if gc.geom==CG_SPH:
 
@@ -274,19 +260,6 @@ cdef class GridBc:
             ph_pos = (pz + sz/2) % sz
             gc.nbr_ranks[1][1] = gc.ranks[px][sy-1][ph_pos]
 
-      if gc.lmin[2]==0 and gc.lmax[2]==2*B_PI:
-        self.grid_bc_funcs[2][0] = z1_grid_bc_periodic
-        self.grid_bc_funcs[2][1] = z2_grid_bc_periodic
-        IF MHDPIC:
-          self.exch_bc_funcs[2][0] = z1_exch_bc_periodic
-          self.exch_bc_funcs[2][1] = z2_exch_bc_periodic
-
-        IF MPI:
-          if pz==0 and sz>1:
-            gc.nbr_ranks[2][0] = gc.ranks[px][py][sz-1]
-
-          if pz==sz-1 and sz>1:
-            gc.nbr_ranks[2][1] = gc.ranks[px][py][0]
 
     # --------------------------------------------------------------------------
 
@@ -351,10 +324,19 @@ cdef class GridBc:
                           BnzIntegr integr, int1d bvars):
 
     cdef:
-      PackFunc pack_func = &pack_grid_all
-      UnpackFunc unpack_func = &unpack_grid_all
+      PackFunc pack_func = pack_grid_all
+      UnpackFunc unpack_func = unpack_grid_all
+
+    IF DIAGNOSE:
+      cdef timeval tstart, tstop
+      print_root("apply grid BC... ")
+      gettimeofday(&tstart, NULL)
 
     apply_bc(self, gd,gc, integr, bvars, self.grid_bc_funcs, pack_func, unpack_func)
+
+    IF DIAGNOSE:
+      gettimeofday(&tstop, NULL)
+      print_root("%.1f ms\n", timediff(tstart,tstop))
 
   IF MHDPIC:
 
@@ -362,11 +344,19 @@ cdef class GridBc:
                             BnzIntegr integr, int1d bvars):
 
       cdef:
-        PackFunc pack_func = &pack_exch_all
-        UnpackFunc unpack_func = &unpack_exch_all
+        PackFunc pack_func = pack_exch_all
+        UnpackFunc unpack_func = unpack_exch_all
+
+      IF DIAGNOSE:
+        cdef timeval tstart, tstop
+        print_root("apply exchange BC... ")
+        gettimeofday(&tstart, NULL)
 
       apply_bc(self, gd,gc, integr, bvars, self.exch_bc_funcs, pack_func, unpack_func)
 
+      IF DIAGNOSE:
+        gettimeofday(&tstop, NULL)
+        print_root("%.1f ms\n", timediff(tstart,tstop))
 
   #--------------------------------------------------------------------------
 
@@ -386,8 +376,8 @@ cdef class GridBc:
 
 # --------------------------------------------------------------------------
 
-cdef void apply_bc(GridBc gbc, GridData gd, GridCoord *gc, BnzIntegr integr,
-                   int1d bvars, GridBcFunc bc_funcs[3][2],
+cdef void apply_bc(GridBC gbc, GridData gd, GridCoord *gc, BnzIntegr integr,
+                   int1d bvars, GridBCFunc bc_funcs[3][2],
                    PackFunc pack_func, UnpackFunc unpack_func):
 
   IF MPI:
@@ -416,6 +406,7 @@ cdef void apply_bc(GridBc gbc, GridData gd, GridCoord *gc, BnzIntegr integr,
       int rtagl, rtagr
       int stagl, stagr
 
+    # CHECK THIS!
     # Do MPI exchange from z- to x-direction in order to use the same procedure
     # to set ghost cells normally as well as to exchange particle deposits
     # that must be done in reverse (z to x) for setting corners correctly.

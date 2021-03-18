@@ -1,6 +1,6 @@
 #include <stddef.h>
-#include "../defs.h"
-#include "../grid/coord.h"
+#include "../defs_c.h"
+#include "../coordinates/coord_c.h"
 
 extern void advance_driv_force_i(real *fdrivx, real *fdrivy, real *fdrivz,
                                  real *c1, real *c2,

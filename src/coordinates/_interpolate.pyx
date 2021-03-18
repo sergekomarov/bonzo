@@ -358,6 +358,7 @@ cdef void set_flat_nonuni(real **cm, real **cp, real *xi, int ntot, int p):
       cm[3][i] = w6 * w1
 
   elif p==3:
+    pass
 
   # FINISH THIS!
 

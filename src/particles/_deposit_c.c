@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-void move(ParticleData *pd, real ****fcoup,
-          ParticleProp *pp, GridCoord *gc,
+void move(PrtData *pd, real ****fcoup,
+          PrtProp *pp, GridCoord *gc,
           real dt, real sol, real qomc, real rhocr, int ppc) {
 
   real dth_sol = 0.5*dt*sol;

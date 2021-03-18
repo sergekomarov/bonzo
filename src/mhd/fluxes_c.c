@@ -283,7 +283,7 @@ void hllc_flux(real **_flux, real **_wL, real **_wR, real *_bx,
     vLsL = wL[VX] - sL;
     vRsR = wR[VX] - sR;
 
-    // calculate F_K-U_K*S_K from Toro' book
+    // calculate F_K-U_K*S_K from Toro's book
 
     for (int n=0; n<NMODE; ++n) {
       fL[n] = uL[n] * vLsL;

@@ -3,8 +3,8 @@
 from bnz.defs cimport *
 from bnz.coordinates.coord cimport GridCoord
 from bnz.coordinates.grid cimport GridData, BnzGrid
-from bnz.particles.particle cimport BnzParticles
-from bnz.integrate.integrator cimport BnzIntegr
+IF MHDPIC: from bnz.particles.particle cimport BnzParticles
+from bnz.integration.integrator cimport BnzIntegr
 
 # primitive or conservative variables in grid output
 cdef enum VarType:

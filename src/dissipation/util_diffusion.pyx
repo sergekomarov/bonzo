@@ -24,7 +24,7 @@ cdef inline real lim(real a, real b) nogil:
 
 # Limited and unlimited transverse gradients.
 
-cdef inline real tr_grad_lim_xy(real3d a, int i, int j, int k, GridCoord *gc) nogil:
+cdef inline real tr_grad_lim_yx(real3d a, int i, int j, int k, GridCoord *gc) nogil:
 
   cdef:
     real *dy_ = gc.dlv_inv[1]
@@ -35,7 +35,7 @@ cdef inline real tr_grad_lim_xy(real3d a, int i, int j, int k, GridCoord *gc) no
              lim((a[k,j,  i  ] - a[k,j-1,i  ]) * dy_[j],
                  (a[k,j+1,i  ] - a[k,j,  i  ]) * dy_[j+1]) * sy_[i])
 
-cdef inline real tr_grad_lim_xz(real3d a, int i, int j, int k, GridCoord *gc) nogil:
+cdef inline real tr_grad_lim_zx(real3d a, int i, int j, int k, GridCoord *gc) nogil:
 
   cdef:
     real *dz_ = gc.dlv_inv[2]
@@ -48,7 +48,7 @@ cdef inline real tr_grad_lim_xz(real3d a, int i, int j, int k, GridCoord *gc) no
                  (a[k+1,j,i  ] - a[k,  j,i  ]) * dz_[k+1]) * szx_[i]*szy_[j])
 
 
-cdef inline real tr_grad_lim_yx(real3d a, int i, int j, int k, GridCoord *gc) nogil:
+cdef inline real tr_grad_lim_xy(real3d a, int i, int j, int k, GridCoord *gc) nogil:
 
   cdef real *dx_ = gc.dlv_inv[0]
 
@@ -57,7 +57,7 @@ cdef inline real tr_grad_lim_yx(real3d a, int i, int j, int k, GridCoord *gc) no
              lim((a[k,j,  i  ] - a[k,j,  i-1]) * dx_[i],
                  (a[k,j,  i+1] - a[k,j,  i  ]) * dx_[i+1]))
 
-cdef inline real tr_grad_lim_yz(real3d a, int i, int j, int k, GridCoord *gc) nogil:
+cdef inline real tr_grad_lim_zy(real3d a, int i, int j, int k, GridCoord *gc) nogil:
 
   cdef:
     real *dz_ = gc.dlv_inv[2]
@@ -70,7 +70,7 @@ cdef inline real tr_grad_lim_yz(real3d a, int i, int j, int k, GridCoord *gc) no
                  (a[k+1,j,  i] - a[k,  j,  i]) * dz_[k+1]) * szx_[i]*szy_[j])
 
 
-cdef inline real tr_grad_lim_zx(real3d a, int i, int j, int k, GridCoord *gc) nogil:
+cdef inline real tr_grad_lim_xz(real3d a, int i, int j, int k, GridCoord *gc) nogil:
 
   cdef real *dx_ = gc.dlv_inv[0]
 
@@ -79,7 +79,7 @@ cdef inline real tr_grad_lim_zx(real3d a, int i, int j, int k, GridCoord *gc) no
              lim((a[k,  j,i  ] - a[k,  j,i-1]) * dx_[i],
                  (a[k,  j,i+1] - a[k,  j,i  ]) * dx_[i+1]))
 
-cdef inline real tr_grad_lim_zy(real3d a, int i, int j, int k, GridCoord *gc) nogil:
+cdef inline real tr_grad_lim_yz(real3d a, int i, int j, int k, GridCoord *gc) nogil:
 
   cdef:
     real *dy_ = gc.dlv_inv[1]

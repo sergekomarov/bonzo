@@ -13,8 +13,8 @@ from bnz.util cimport calloc_2d_array, free_2d_array, swap_array_ptrs
 
 from bnz.coordinates.coord cimport get_cell_vol, get_face_area_x
 from bnz.coordinates.coord cimport get_face_area_y, get_face_area_z
-from bnz.integrate.integrator cimport reconstr_const, reconstr_linear, reconstr_weno, reconstr_parab
-from bnz.integrate.integrator cimport ReconstrFunc
+from bnz.integration.integrator cimport reconstr_const, reconstr_linear, reconstr_weno, reconstr_parab
+from bnz.integration.integrator cimport ReconstrFunc
 
 
 cdef void godunov_fluxes(real4d flx_x, real4d flx_y, real4d flx_z,

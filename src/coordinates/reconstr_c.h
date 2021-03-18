@@ -1,11 +1,5 @@
-#include <stddef.h>
 #include "../defs_c.h"
 #include "coord_c.h"
-
-// extern real mm_lim(real a, real b) __attribute__((always_inline));
-// extern real mc_lim(real a, real b) __attribute__((always_inline));
-// extern real vl_lim(real a, real b) __attribute__((always_inline));
-// extern real l2_lim(real a, real b) __attribute__((always_inline));
 
 extern void reconstr_const(real **wl, real **wr, real ***w, real ***scr,
                      GridCoord *gc,  int ax,
@@ -18,15 +12,15 @@ extern void reconstr_linear(real **wl, real **wr, real ***w, real ***scr,
                      int char_proj, real gam);
 
 
-extern void reconstr_parab(real **wl, real **wr, real ***w, real ***scr,
-                     GridCoord *gc, int ax,
-                     int i1, int i2, int j, int k,
-                     int char_proj, real gam);
-
-extern void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
-                     GridCoord *gc, int ax,
-                     int i1, int i2, int j, int k,
-                     int char_proj, real gam);
+// extern void reconstr_parab(real **wl, real **wr, real ***w, real ***scr,
+//                      GridCoord *gc, int ax,
+//                      int i1, int i2, int j, int k,
+//                      int char_proj, real gam);
+//
+// extern void reconstr_weno(real **wl, real **wr, real ***w, real ***scr,
+//                      GridCoord *gc, int ax,
+//                      int i1, int i2, int j, int k,
+//                      int char_proj, real gam);
 
 
 // Limiters.

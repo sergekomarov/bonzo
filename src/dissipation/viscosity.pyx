@@ -13,13 +13,13 @@ from bnz.util cimport print_root
 cimport util_diffusion as utdiff
 
 
-cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
+cdef void diffuse(BnzDiffusion diff, BnzGrid grid, real dt):
   # only need integr to apply BCs
 
   cdef:
     GridCoord *gc = grid.coord
     real4d prim = grid.data.prim
-    BnzDiffusion diff = integr.diff
+    BnzIntegr integr = diff.integr
     DiffScratch scr = diff.scratch
 
     real dt_hyp = dt
@@ -41,9 +41,9 @@ cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
     real4d dvel0=scr.dvel0, dvel=scr.dvel
     real2d sts_coeff
 
-  cdef int uniflat_geom = 0
-  if gc.geom==CG_CAR and gc.scale[0]==CS_UNI and gc.scale[1]==CS_UNI and gc.scale[2]==CS_UNI:
-    uniflat_geom=1
+  # cdef int uniflat_geom = 0
+  # if gc.geom==CG_CAR and gc.scale[0]==CS_UNI and gc.scale[1]==CS_UNI and gc.scale[2]==CS_UNI:
+  #   uniflat_geom=1
 
   # primitive vars have already been calculated for all diffusion processes
 
@@ -65,10 +65,10 @@ cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
   # do STS iterations
   for m in range(1,s+1):
 
-    if uniflat_geom:
-      apply_diff_oper_uniflat(dvel, prim, gc, diff)
-    else:
-      apply_diff_oper(dvel, prim, gc, diff)
+    # if uniflat_geom:
+    apply_diff_oper_uniflat(dvel, prim, gc, diff)
+    # else:
+    #   apply_diff_oper(dvel, prim, gc, diff)
 
     if m==1:
       for n in range(3):
@@ -98,15 +98,15 @@ cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
     if m%ngh==0 and m!=s:
       grid.apply_grid_bc(integr, np.asarray([VX,VY,VZ]))
 
-  if uniflat_geom:
-    update_nrg_uniflat(prim, vel0, gc, diff, dt)
-  else:
-    update_nrg(prim, vel0, gc, diff, dt)
+  # if uniflat_geom:
+  update_nrg_uniflat(prim, vel0, gc, diff, dt)
+  # else:
+  #   update_nrg(prim, vel0, gc, diff, dt)
 
 
 # -------------------------------------------------------------------------
 
-cdef void apply_diff_oper_uniflat(real3d dtemp, real4d w,
+cdef void apply_diff_oper_uniflat(real3d dvel, real4d w,
                           GridCoord *gc, BnzDiffusion diff):
 
   # Apply Navier-Stokes viscosity matrix operator to velocity.

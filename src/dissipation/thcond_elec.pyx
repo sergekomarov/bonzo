@@ -11,9 +11,10 @@ from libc.stdio cimport printf
 
 from bnz.util cimport print_root
 cimport util_diffusion as utdiff
+from bnz.coordinates.coord cimport get_cell_width_x, get_cell_width_y, get_cell_width_z
 
 
-cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
+cdef void diffuse(BnzDiffusion diff, BnzGrid grid, real dt):
   # only need integr to apply BCs
 
   # Evolve electron temperature by super-time-stepping.
@@ -22,7 +23,7 @@ cdef void diffuse(BnzGrid grid, BnzIntegr integr, real dt):
     GridCoord *gc = grid.coord
     real4d prim = grid.data.prim
     real4d bfld = grid.data.bfld
-    BnzDiffusion diff = integr.diff
+    BnzIntegr integr = diff.integr
     DiffScratch scr = diff.scratch
 
     real dt_hyp = dt
@@ -360,6 +361,7 @@ cdef real get_dt(real4d prim, GridCoord *gc, BnzDiffusion diff):
     int id
     # real dTdx,dTdy,dTdz,dTdsi, b2i
     real ad, ad_dl2, ad_dl2_max = 0.
+    real dsx,dsy,dsz
 
   cdef:
     real gamm1 = diff.gam-1.
@@ -372,10 +374,6 @@ cdef real get_dt(real4d prim, GridCoord *gc, BnzDiffusion diff):
     # real *dxvi = gc.dlv_inv[0]
     # real *dyvi = gc.dlv_inv[1]
     # real *dzvi = gc.dlv_inv[2]
-
-    real *dxfi = gc.dlf_inv[0]
-    real *dyfi = gc.dlf_inv[1]
-    real *dzfi = gc.dlf_inv[2]
 
   IF MPI:
     cdef:
@@ -413,14 +411,18 @@ cdef real get_dt(real4d prim, GridCoord *gc, BnzDiffusion diff):
 
           # if prim[RHO,k,j,i] < 0.8 or temp[k,j,i] > 1.6: ad=SMALL_NUM
 
+          dsx = get_cell_width_x(gc,i,j,k)
+          dsy = get_cell_width_y(gc,i,j,k)
+          dsz = get_cell_width_z(gc,i,j,k)
+
           IF not TWOTEMP: _temp = prim[PR,k,j,i] / prim[RHO,k,j,i]
           ELSE: _temp = prim[PE,k,j,i] / prim[RHO,k,j,i]
 
           ad = diff.kappa0 / prim[RHO,k,j,i] * gamm1 #* SQR(_temp) * SQRT(FABS(_temp))
 
-          ad_dl2 = SQR(dxfi[i]) * ad #* FABS(dTdx*dTdsi)
-          IF D2D: ad_dl2 = ad_dl2 + SQR(dyfi[j]) * ad #* FABS(dTdy*dTdsi)
-          IF D3D: ad_dl2 = ad_dl2 + SQR(dzfi[k]) * ad #* FABS(dTdz*dTdsi)
+          ad_dl2 = ad/SQR(dsx) #* FABS(dTdx*dTdsi)
+          IF D2D: ad_dl2 = ad_dl2 + ad/SQR(dsy) #* FABS(dTdy*dTdsi)
+          IF D3D: ad_dl2 = ad_dl2 + ad/SQR(dsz) #* FABS(dTdz*dTdsi)
 
           if ad_dl2 > ad_dl2_max_loc[id]: ad_dl2_max_loc[id] = ad_dl2
 
